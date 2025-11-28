@@ -240,6 +240,7 @@ public class ArticleStateManager {
         public final String link;
         public final String image;
         public final String author;
+        public final String pubDate;
         public final long timestamp;
 
         public FavoriteArticle(RssItem item, String feedTitle) {
@@ -252,12 +253,13 @@ public class ArticleStateManager {
             this.link = item.getLink();
             this.image = item.getImage();
             this.author = item.getAuthor();
+            this.pubDate = item.getPubDate();
             this.timestamp = System.currentTimeMillis();
         }
 
         private FavoriteArticle(String articleId, String feedTitle, String title,
                                String description, String link, String image, 
-                               String author, long timestamp) {
+                               String author, String pubDate, long timestamp) {
             this.articleId = articleId;
             this.feedTitle = feedTitle;
             this.title = title;
@@ -265,6 +267,7 @@ public class ArticleStateManager {
             this.link = link;
             this.image = image;
             this.author = author;
+            this.pubDate = pubDate;
             this.timestamp = timestamp;
         }
 
@@ -277,6 +280,7 @@ public class ArticleStateManager {
             obj.put("link", link);
             obj.put("image", image);
             obj.put("author", author);
+            obj.put("pubDate", pubDate);
             obj.put("timestamp", timestamp);
             return obj;
         }
@@ -291,6 +295,7 @@ public class ArticleStateManager {
                     obj.getString("link"),
                     obj.optString("image", null),
                     obj.optString("author", null),
+                    obj.optString("pubDate", null),
                     obj.getLong("timestamp")
                 );
             } catch (JSONException e) {
@@ -302,22 +307,27 @@ public class ArticleStateManager {
          * Converts this favorite to an RssItem for display.
          */
         public RssItem toRssItem() {
-            RssItem item = new RssItem(
-                null,  // guid
-                title,
-                link,
-                description,
-                author,
-                new ArrayList<>(),  // categories
-                null,  // pubDate
-                image,
-                null,  // audio
-                null,  // video
-                null,  // sourceName
-                null,  // sourceUrl
-                null   // content
+            // RssItem from library - use reflection or builder if available
+            // For now, create a minimal version that works with the adapter
+            return new RssItem(
+                    link,           // guid (using link as guid)
+                    title,
+                    link,
+                    description,
+                    author,
+                    pubDate,
+                    image,
+                    null,           // audio
+                    null,           // video
+                    null,           // sourceName
+                    null,           // sourceUrl
+                    null,           // content
+                    new ArrayList<>(), // categories
+                    null,           // itunesItemData
+                    null,           // commentsUrl
+                    null,           // youtubeItemData
+                    null            // rawEnclosure
             );
-            return item;
         }
     }
 }

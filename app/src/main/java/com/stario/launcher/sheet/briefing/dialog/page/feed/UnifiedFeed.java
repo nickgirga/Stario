@@ -22,10 +22,14 @@ import android.util.Log;
 import com.prof18.rssparser.model.RssItem;
 import com.stario.launcher.sheet.briefing.rss.RSSHelper;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -81,10 +85,35 @@ public class UnifiedFeed extends Feed {
 
         // Sort by publication date (newest first)
         Collections.sort(allArticles, new Comparator<RssItem>() {
+            // Common RSS date formats
+            private final SimpleDateFormat[] dateFormats = {
+                new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH),
+                new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH),
+                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ENGLISH),
+                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.ENGLISH),
+                new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH),
+                new SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH)
+            };
+            
+            private Date parseDate(String dateStr) {
+                if (dateStr == null) return null;
+                
+                for (SimpleDateFormat format : dateFormats) {
+                    try {
+                        return format.parse(dateStr);
+                    } catch (ParseException e) {
+                        // Try next format
+                    }
+                }
+                
+                Log.w(TAG, "Could not parse date: " + dateStr);
+                return null;
+            }
+            
             @Override
             public int compare(RssItem item1, RssItem item2) {
-                String date1 = item1.getPubDate();
-                String date2 = item2.getPubDate();
+                Date date1 = parseDate(item1.getPubDate());
+                Date date2 = parseDate(item2.getPubDate());
                 
                 if (date1 == null && date2 == null) return 0;
                 if (date1 == null) return 1;
