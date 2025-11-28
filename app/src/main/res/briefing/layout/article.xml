@@ -83,12 +83,12 @@
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_margin="10dp"
-            android:background="@drawable/ripple"
+            android:background="@drawable/favorite_button_background"
             android:contentDescription="@string/favorite"
             android:padding="12dp"
             android:src="@drawable/ic_favorite_outline"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
             app:tint="?attr/colorOnSurface" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -128,7 +128,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:layout_marginEnd="10dp"
-                android:background="@drawable/ripple"
+                android:background="@drawable/favorite_button_background"
                 android:contentDescription="@string/favorite"
                 android:padding="12dp"
                 android:src="@drawable/ic_favorite_outline"
