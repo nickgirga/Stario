@@ -312,15 +312,15 @@ public class ArticleStateManager {
          */
         public RssItem toRssItem() {
             // Create RssItem with all necessary fields populated
-            // Use description for both description and content to ensure proper display
+            // Correct parameter order: guid, title, image, link, pubDate, description, author, ...
             return new RssItem(
                     link != null ? link : articleId,  // guid
                     title != null ? title : "",        // title
+                    image,                              // image (moved to position 3)
                     link,                               // link
-                    description,                        // description
-                    author,                             // author
                     pubDate,                            // pubDate
-                    image,                              // image
+                    description,                        // description
+                    author,                             // author (moved to position 7)
                     null,                               // audio
                     null,                               // video
                     feedTitle,                          // sourceName (show which feed it's from)
