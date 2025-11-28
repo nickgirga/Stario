@@ -37,6 +37,7 @@ import com.stario.launcher.R;
 import com.stario.launcher.sheet.SheetType;
 import com.stario.launcher.sheet.briefing.dialog.BriefingDialog;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.BriefingFeedList;
+import com.stario.launcher.sheet.briefing.dialog.page.feed.FavoritesFeed;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.Feed;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed;
 import com.stario.launcher.sheet.briefing.rss.RSSHelper;
@@ -55,7 +56,7 @@ import com.stario.launcher.utils.Utils;
 import java.util.List;
 import java.util.concurrent.Future;
 
-public class FeedPage extends Fragment {
+public class FeedPage extends Fragment implements ArticleStateManager.StateChangeListener {
     public static final String FEED_POSITION = "com.stario.FeedTab.FEED_POSITION";
 
     private static final float UPDATE_SCALE = 0.9f;
@@ -148,6 +149,9 @@ public class FeedPage extends Fragment {
         // Initialize ArticleStateManager
         stateManager = ArticleStateManager.from(activity);
         adapter.setStateManager(stateManager);
+        
+        // Listen for state changes to refresh favorites feed
+        stateManager.addStateChangeListener(this);
 
         manager = new ScrollControlStaggeredGridLayoutManager(0);
         LayoutSizeObserver.attach(root, LayoutSizeObserver.WIDTH, new LayoutSizeObserver.OnChange() {
@@ -207,6 +211,23 @@ public class FeedPage extends Fragment {
 
         UiUtils.post(this::update);
     }
+    
+    @Override
+    public void onDestroy() {
+        if (stateManager != null) {
+            stateManager.removeStateChangeListener(this);
+        }
+        super.onDestroy();
+    }
+    
+    @Override
+    public void onStateChanged() {
+        // Refresh the favorites feed when favorites change
+        Feed feed = BriefingFeedList.getInstance().get(position);
+        if (FavoritesFeed.isFavoritesFeed(feed)) {
+            UiUtils.post(this::update);
+        }
+    }
 
     public void update() {
         if (runningTask != null && !runningTask.isDone()) {
@@ -249,9 +270,11 @@ public class FeedPage extends Fragment {
             Feed feed = BriefingFeedList.getInstance().get(position);
             List<RssItem> items;
             
-            // Check if this is a unified feed
+            // Check if this is a special feed
             if (UnifiedFeed.isUnifiedFeed(feed)) {
                 items = UnifiedFeed.fetchUnifiedArticles(BriefingFeedList.getInstance());
+            } else if (FavoritesFeed.isFavoritesFeed(feed)) {
+                items = FavoritesFeed.fetchFavoriteArticles(stateManager);
             } else {
                 items = RSSHelper.parse(feed.getRSSLink());
             }

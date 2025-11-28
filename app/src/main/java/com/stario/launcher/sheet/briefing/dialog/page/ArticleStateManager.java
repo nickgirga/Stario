@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Răzvan Albu
+ * Copyright (C) 2025 Nicholas Girga
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -248,8 +248,12 @@ public class ArticleStateManager {
                             (item.getGuid() != null ? item.getGuid() : "");
             this.feedTitle = feedTitle;
             this.title = item.getTitle();
-            this.description = item.getDescription() != null ? item.getDescription() : 
-                             (item.getContent() != null ? item.getContent() : "");
+            // Prefer description over content for display
+            String desc = item.getDescription();
+            if (desc == null || desc.isEmpty()) {
+                desc = item.getContent();
+            }
+            this.description = desc;
             this.link = item.getLink();
             this.image = item.getImage();
             this.author = item.getAuthor();
@@ -307,26 +311,26 @@ public class ArticleStateManager {
          * Converts this favorite to an RssItem for display.
          */
         public RssItem toRssItem() {
-            // RssItem from library - use reflection or builder if available
-            // For now, create a minimal version that works with the adapter
+            // Create RssItem with all necessary fields populated
+            // Use description for both description and content to ensure proper display
             return new RssItem(
-                    link,           // guid (using link as guid)
-                    title,
-                    link,
-                    description,
-                    author,
-                    pubDate,
-                    image,
-                    null,           // audio
-                    null,           // video
-                    null,           // sourceName
-                    null,           // sourceUrl
-                    null,           // content
-                    new ArrayList<>(), // categories
-                    null,           // itunesItemData
-                    null,           // commentsUrl
-                    null,           // youtubeItemData
-                    null            // rawEnclosure
+                    link != null ? link : articleId,  // guid
+                    title != null ? title : "",        // title
+                    link,                               // link
+                    description,                        // description
+                    author,                             // author
+                    pubDate,                            // pubDate
+                    image,                              // image
+                    null,                               // audio
+                    null,                               // video
+                    feedTitle,                          // sourceName (show which feed it's from)
+                    null,                               // sourceUrl
+                    description,                        // content (same as description)
+                    new ArrayList<>(),                  // categories
+                    null,                               // itunesItemData
+                    null,                               // commentsUrl
+                    null,                               // youtubeItemData
+                    null                                // rawEnclosure
             );
         }
     }

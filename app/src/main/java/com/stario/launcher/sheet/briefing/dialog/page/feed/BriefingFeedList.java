@@ -24,6 +24,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 
 import com.stario.launcher.preferences.Entry;
+import com.stario.launcher.sheet.briefing.dialog.page.ArticleStateManager;
 import com.stario.launcher.themes.ThemedActivity;
 
 import org.json.JSONArray;
@@ -31,19 +32,21 @@ import org.json.JSONArray;
 import java.util.ArrayList;
 import java.util.List;
 
-public class BriefingFeedList {
+public class BriefingFeedList implements ArticleStateManager.StateChangeListener {
     private static final String FEEDS_KEY = "com.stario.FEEDS";
     private static BriefingFeedList instance = null;
 
     private final List<FeedListener> listeners;
     private final SharedPreferences state;
     private final List<Feed> items;
+    private final ArticleStateManager stateManager;
 
     private BriefingFeedList(ThemedActivity activity) {
         this.items = new ArrayList<>();
         this.listeners = new ArrayList<>();
         this.state = activity.getApplicationContext()
                 .getSharedPreferences(Entry.BRIEFING);
+        this.stateManager = ArticleStateManager.from(activity);
 
         load(state.getString(FEEDS_KEY, null));
         
@@ -62,6 +65,12 @@ public class BriefingFeedList {
                 listener.onInserted(0);
             }
         }
+        
+        // Add favorites feed if there are favorites
+        ensureFavoritesFeed();
+        
+        // Listen for state changes to update favorites feed
+        stateManager.addStateChangeListener(this);
     }
 
     public static BriefingFeedList from(@NonNull ThemedActivity activity) {
@@ -140,7 +149,7 @@ public class BriefingFeedList {
         for (Feed feed : items) {
             if (UnifiedFeed.isUnifiedFeed(feed)) {
                 hasUnifiedFeed = true;
-            } else {
+            } else if (!FavoritesFeed.isFavoritesFeed(feed)) {
                 regularFeedsCount++;
             }
         }
@@ -160,6 +169,43 @@ public class BriefingFeedList {
                     }
                     break;
                 }
+            }
+        }
+    }
+    
+    private void ensureFavoritesFeed() {
+        boolean hasFavoritesFeed = false;
+        int favoritesIndex = -1;
+        
+        for (int i = 0; i < items.size(); i++) {
+            if (FavoritesFeed.isFavoritesFeed(items.get(i))) {
+                hasFavoritesFeed = true;
+                favoritesIndex = i;
+                break;
+            }
+        }
+        
+        boolean hasFavorites = stateManager != null && !stateManager.getFavorites().isEmpty();
+        
+        if (!hasFavoritesFeed && hasFavorites) {
+            // Add favorites feed after unified feed (or at position 0 if no unified feed)
+            int insertPosition = 0;
+            for (int i = 0; i < items.size(); i++) {
+                if (UnifiedFeed.isUnifiedFeed(items.get(i))) {
+                    insertPosition = i + 1;
+                    break;
+                }
+            }
+            
+            items.add(insertPosition, new FavoritesFeed());
+            for (FeedListener listener : listeners) {
+                listener.onInserted(insertPosition);
+            }
+        } else if (hasFavoritesFeed && !hasFavorites) {
+            // Remove favorites feed if there are no favorites
+            items.remove(favoritesIndex);
+            for (FeedListener listener : listeners) {
+                listener.onRemoved(favoritesIndex);
             }
         }
     }
@@ -190,9 +236,9 @@ public class BriefingFeedList {
             return;
         }
         
-        // Prevent removal of unified feed directly
+        // Prevent removal of special feeds directly
         Feed feed = items.get(position);
-        if (UnifiedFeed.isUnifiedFeed(feed)) {
+        if (UnifiedFeed.isUnifiedFeed(feed) || FavoritesFeed.isFavoritesFeed(feed)) {
             return;
         }
 
@@ -203,7 +249,7 @@ public class BriefingFeedList {
             listener.onRemoved(position);
         }
         
-        // Update unified feed status
+        // Update special feeds status
         ensureUnifiedFeed();
     }
 
@@ -211,8 +257,8 @@ public class BriefingFeedList {
     private void serialize() {
         ArrayList<String> serials = new ArrayList<>();
         for (Feed item : items) {
-            // Don't serialize the unified feed
-            if (!UnifiedFeed.isUnifiedFeed(item)) {
+            // Don't serialize special feeds (unified and favorites)
+            if (!UnifiedFeed.isUnifiedFeed(item) && !FavoritesFeed.isFavoritesFeed(item)) {
                 serials.add(item.serialize());
             }
         }
@@ -231,6 +277,12 @@ public class BriefingFeedList {
         if (listener != null) {
             this.listeners.remove(listener);
         }
+    }
+    
+    @Override
+    public void onStateChanged() {
+        // Update favorites feed when favorites change
+        ensureFavoritesFeed();
     }
 
     public interface FeedListener {

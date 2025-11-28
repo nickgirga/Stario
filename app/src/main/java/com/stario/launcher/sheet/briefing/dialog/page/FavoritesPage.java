@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Răzvan Albu
+ * Copyright (C) 2025 Nicholas Girga
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -195,6 +195,9 @@ public class FavoritesPage extends Fragment implements ArticleStateManager.State
 
         List<ArticleStateManager.FavoriteArticle> favorites = stateManager.getFavorites();
         List<RssItem> items = new ArrayList<>();
+
+        // Sort favorites by timestamp in descending order (most recent first)
+        favorites.sort((a, b) -> Long.compare(b.timestamp, a.timestamp));
 
         // Convert favorites to RssItems
         for (ArticleStateManager.FavoriteArticle favorite : favorites) {
