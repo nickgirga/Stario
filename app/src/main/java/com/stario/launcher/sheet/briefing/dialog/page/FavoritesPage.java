@@ -24,25 +24,17 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.prof18.rssparser.model.RssItem;
 import com.stario.launcher.R;
 import com.stario.launcher.sheet.SheetType;
 import com.stario.launcher.sheet.briefing.dialog.BriefingDialog;
-import com.stario.launcher.sheet.briefing.dialog.page.feed.BriefingFeedList;
-import com.stario.launcher.sheet.briefing.dialog.page.feed.Feed;
-import com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed;
-import com.stario.launcher.sheet.briefing.rss.RSSHelper;
 import com.stario.launcher.themes.ThemedActivity;
 import com.stario.launcher.ui.Measurements;
-import com.stario.launcher.ui.common.scrollers.CustomSwipeRefreshLayout;
 import com.stario.launcher.ui.recyclers.RecyclerItemAnimator;
 import com.stario.launcher.ui.recyclers.managers.ScrollControlStaggeredGridLayoutManager;
 import com.stario.launcher.ui.recyclers.overscroll.OverScrollEffect;
@@ -50,41 +42,38 @@ import com.stario.launcher.ui.recyclers.overscroll.OverScrollRecyclerView;
 import com.stario.launcher.ui.utils.LayoutSizeObserver;
 import com.stario.launcher.ui.utils.UiUtils;
 import com.stario.launcher.ui.utils.animation.Animation;
-import com.stario.launcher.utils.Utils;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Future;
 
-public class FeedPage extends Fragment {
-    public static final String FEED_POSITION = "com.stario.FeedTab.FEED_POSITION";
+/**
+ * Displays all favorited/saved articles.
+ * Completes Issue #4: "Briefing" favorites/saved.
+ */
+public class FavoritesPage extends Fragment implements ArticleStateManager.StateChangeListener {
+    public static final String PAGE_POSITION = "com.stario.FavoritesPage.PAGE_POSITION";
 
-    private static final float UPDATE_SCALE = 0.9f;
-
-    private CustomSwipeRefreshLayout swipeRefreshLayout;
     private ScrollControlStaggeredGridLayoutManager manager;
     private OverScrollRecyclerView recyclerView;
     private ThemedActivity activity;
     private FeedPageAdapter adapter;
     private ArticleStateManager stateManager;
-    private ViewGroup exceptionView;
-    private TextView fetchingView;
-    private Future<?> runningTask;
+    private ViewGroup emptyView;
     private int position;
     private View title;
     private View tabs;
 
-    public FeedPage() {
+    public FavoritesPage() {
         // default
     }
 
-    public FeedPage(int position) {
+    public FavoritesPage(int position) {
         this.position = position;
     }
 
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
-        outState.putInt(FEED_POSITION, position);
-
+        outState.putInt(PAGE_POSITION, position);
         super.onSaveInstanceState(outState);
     }
 
@@ -95,7 +84,6 @@ public class FeedPage extends Fragment {
         }
 
         this.activity = (ThemedActivity) context;
-
         super.onAttach(context);
     }
 
@@ -104,7 +92,7 @@ public class FeedPage extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         if (savedInstanceState != null) {
-            position = savedInstanceState.getInt(FEED_POSITION, -1);
+            position = savedInstanceState.getInt(PAGE_POSITION, -1);
         }
 
         View root = inflater.inflate(R.layout.articles, container, false);
@@ -115,9 +103,12 @@ public class FeedPage extends Fragment {
         tabs = containerRoot.findViewById(R.id.tabs);
 
         recyclerView = root.findViewById(R.id.recycler_view);
-        swipeRefreshLayout = root.findViewById(R.id.refresh);
-        exceptionView = root.findViewById(R.id.exception);
-        fetchingView = root.findViewById(R.id.fetching);
+        emptyView = root.findViewById(R.id.exception);
+        
+        // Hide the fetching view and refresh layout for favorites
+        root.findViewById(R.id.fetching).setVisibility(View.GONE);
+        root.findViewById(R.id.refresh).setVisibility(View.GONE);
+        recyclerView.setVisibility(View.VISIBLE);
 
         recyclerView.setItemAnimator(new RecyclerItemAnimator(RecyclerItemAnimator.APPEARANCE, Animation.EXTENDED));
 
@@ -148,6 +139,7 @@ public class FeedPage extends Fragment {
         // Initialize ArticleStateManager
         stateManager = ArticleStateManager.from(activity);
         adapter.setStateManager(stateManager);
+        stateManager.addStateChangeListener(this);
 
         manager = new ScrollControlStaggeredGridLayoutManager(0);
         LayoutSizeObserver.attach(root, LayoutSizeObserver.WIDTH, new LayoutSizeObserver.OnChange() {
@@ -160,26 +152,6 @@ public class FeedPage extends Fragment {
 
         recyclerView.setLayoutManager(manager);
         recyclerView.setAdapter(adapter);
-
-        swipeRefreshLayout.setOnRefreshListener(this::update);
-        swipeRefreshLayout.setOnEngageListener(engaged -> manager.setScrollEnabled(!engaged));
-        swipeRefreshLayout.setSize(SwipeRefreshLayout.LARGE);
-        swipeRefreshLayout.setOverScrollMode(View.OVER_SCROLL_NEVER);
-
-        swipeRefreshLayout.setProgressBackgroundColorSchemeColor(
-                activity.getAttributeData(com.google.android.material.R.attr.colorSurfaceContainer)
-        );
-
-        swipeRefreshLayout.setColorSchemeColors(
-                activity.getAttributeData(com.google.android.material.R.attr.colorSecondary),
-                activity.getAttributeData(com.google.android.material.R.attr.colorTertiary),
-                activity.getAttributeData(androidx.appcompat.R.attr.colorPrimary)
-        );
-
-        root.findViewById(R.id.refresh_button)
-                .setOnClickListener(v ->
-                        UiUtils.post(this::update)
-                );
 
         Measurements.addNavListener(bottomInset ->
                 recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(),
@@ -194,118 +166,50 @@ public class FeedPage extends Fragment {
 
         recyclerView.setPadding(recyclerView.getPaddingLeft(), Measurements.dpToPx(15) +
                 titleHeight + tabsHeight, recyclerView.getPaddingRight(), Measurements.getNavHeight());
-        exceptionView.setPadding(0, (titleHeight + tabsHeight) / 2, 0, 0);
-        fetchingView.setPadding(0, (titleHeight + tabsHeight) / 2, 0, 0);
-        swipeRefreshLayout.setProgressViewOffset(true,
-                titleHeight + tabsHeight, (int) ((titleHeight + tabsHeight) * 1.5f));
+        emptyView.setPadding(0, (titleHeight + tabsHeight) / 2, 0, 0);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        reset();
-
-        UiUtils.post(this::update);
+        UiUtils.post(this::loadFavorites);
     }
 
-    public void update() {
-        if (runningTask != null && !runningTask.isDone()) {
-            swipeRefreshLayout.setRefreshing(false);
+    @Override
+    public void onDestroy() {
+        if (stateManager != null) {
+            stateManager.removeStateChangeListener(this);
+        }
+        super.onDestroy();
+    }
 
+    @Override
+    public void onStateChanged() {
+        UiUtils.post(this::loadFavorites);
+    }
+
+    private void loadFavorites() {
+        if (stateManager == null) {
             return;
         }
 
-        if (adapter == null || position < 0 ||
-                position >= BriefingFeedList.from(activity).size()) {
-            showErrorState();
+        List<ArticleStateManager.FavoriteArticle> favorites = stateManager.getFavorites();
+        List<RssItem> items = new ArrayList<>();
 
-            return;
+        // Convert favorites to RssItems
+        for (ArticleStateManager.FavoriteArticle favorite : favorites) {
+            items.add(favorite.toRssItem());
         }
 
-        if (!adapter.shouldUpdate()) {
-            if (adapter.getItemCount() == 0) {
-                showErrorState();
-            } else {
-                showContentState(false);
-            }
+        adapter.update(items);
 
-            return;
-        }
-
-        manager.setScrollEnabled(false);
-        exceptionView.setVisibility(View.GONE);
-        recyclerView.clearAnimation();
-
-        if (adapter.getItemCount() == 0) {
-            fetchingView.setVisibility(View.VISIBLE);
-            swipeRefreshLayout.setVisibility(View.INVISIBLE);
-            recyclerView.setAlpha(0f);
+        if (items.isEmpty()) {
+            emptyView.setVisibility(View.VISIBLE);
+            recyclerView.setVisibility(View.GONE);
         } else {
-            fetchingView.setVisibility(View.GONE);
-            swipeRefreshLayout.setRefreshing(true);
+            emptyView.setVisibility(View.GONE);
+            recyclerView.setVisibility(View.VISIBLE);
         }
-
-        runningTask = Utils.submitTask(() -> {
-            Feed feed = BriefingFeedList.getInstance().get(position);
-            List<RssItem> items;
-            
-            // Check if this is a unified feed
-            if (UnifiedFeed.isUnifiedFeed(feed)) {
-                items = UnifiedFeed.fetchUnifiedArticles(BriefingFeedList.getInstance());
-            } else {
-                items = RSSHelper.parse(feed.getRSSLink());
-            }
-
-            UiUtils.post(() -> {
-                if (items != null) {
-                    adapter.update(items);
-
-                    if (adapter.getItemCount() == 0) {
-                        showErrorState();
-                    } else {
-                        showContentState(true);
-                    }
-                } else {
-                    showErrorState();
-                }
-            });
-        });
-    }
-
-    private void showContentState(boolean animate) {
-        exceptionView.setVisibility(View.GONE);
-        fetchingView.setVisibility(View.GONE);
-        swipeRefreshLayout.setVisibility(View.VISIBLE);
-
-        manager.setScrollEnabled(true);
-        swipeRefreshLayout.setRefreshing(false);
-
-        if (recyclerView.getAlpha() == 0f) {
-            recyclerView.setAlpha(1f);
-            recyclerView.setScaleX(UPDATE_SCALE);
-            recyclerView.setScaleY(UPDATE_SCALE);
-
-            recyclerView.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(animate ? Animation.MEDIUM.getDuration() : 0)
-                    .setInterpolator(new FastOutSlowInInterpolator())
-                    .start();
-        }
-    }
-
-    private void showErrorState() {
-        exceptionView.setVisibility(View.VISIBLE);
-        fetchingView.setVisibility(View.GONE);
-        swipeRefreshLayout.setVisibility(View.INVISIBLE);
-        recyclerView.setAlpha(0f);
-
-        swipeRefreshLayout.setRefreshing(false);
-    }
-
-    public void reset() {
-        swipeRefreshLayout.setRefreshing(false);
-        recyclerView.scrollBy(0, -Integer.MAX_VALUE);
     }
 
     public RecyclerView getRecycler() {

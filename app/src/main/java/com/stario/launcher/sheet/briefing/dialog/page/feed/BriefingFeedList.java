@@ -46,6 +46,22 @@ public class BriefingFeedList {
                 .getSharedPreferences(Entry.BRIEFING);
 
         load(state.getString(FEEDS_KEY, null));
+        
+        // Add unified feed as the first item if it doesn't exist
+        boolean hasUnifiedFeed = false;
+        for (Feed feed : items) {
+            if (UnifiedFeed.isUnifiedFeed(feed)) {
+                hasUnifiedFeed = true;
+                break;
+            }
+        }
+        
+        if (!hasUnifiedFeed && items.size() > 1) {
+            items.add(0, new UnifiedFeed());
+            for (FeedListener listener : listeners) {
+                listener.onInserted(0);
+            }
+        }
     }
 
     public static BriefingFeedList from(@NonNull ThemedActivity activity) {
@@ -110,8 +126,42 @@ public class BriefingFeedList {
         for (FeedListener listener : listeners) {
             listener.onInserted(size() - 1);
         }
+        
+        // Add unified feed if we now have multiple feeds and don't have one yet
+        ensureUnifiedFeed();
 
         return true;
+    }
+    
+    private void ensureUnifiedFeed() {
+        boolean hasUnifiedFeed = false;
+        int regularFeedsCount = 0;
+        
+        for (Feed feed : items) {
+            if (UnifiedFeed.isUnifiedFeed(feed)) {
+                hasUnifiedFeed = true;
+            } else {
+                regularFeedsCount++;
+            }
+        }
+        
+        if (!hasUnifiedFeed && regularFeedsCount > 1) {
+            items.add(0, new UnifiedFeed());
+            for (FeedListener listener : listeners) {
+                listener.onInserted(0);
+            }
+        } else if (hasUnifiedFeed && regularFeedsCount <= 1) {
+            // Remove unified feed if we only have one or zero regular feeds
+            for (int i = 0; i < items.size(); i++) {
+                if (UnifiedFeed.isUnifiedFeed(items.get(i))) {
+                    items.remove(i);
+                    for (FeedListener listener : listeners) {
+                        listener.onRemoved(i);
+                    }
+                    break;
+                }
+            }
+        }
     }
 
     public void updateName(Feed feed, String name) {
@@ -139,6 +189,12 @@ public class BriefingFeedList {
         if (position < 0 || position >= items.size()) {
             return;
         }
+        
+        // Prevent removal of unified feed directly
+        Feed feed = items.get(position);
+        if (UnifiedFeed.isUnifiedFeed(feed)) {
+            return;
+        }
 
         items.remove(position);
         serialize();
@@ -146,13 +202,19 @@ public class BriefingFeedList {
         for (FeedListener listener : listeners) {
             listener.onRemoved(position);
         }
+        
+        // Update unified feed status
+        ensureUnifiedFeed();
     }
 
     @SuppressLint("ApplySharedPref")
     private void serialize() {
         ArrayList<String> serials = new ArrayList<>();
         for (Feed item : items) {
-            serials.add(item.serialize());
+            // Don't serialize the unified feed
+            if (!UnifiedFeed.isUnifiedFeed(item)) {
+                serials.add(item.serialize());
+            }
         }
 
         state.edit().putString(FEEDS_KEY,

@@ -30,14 +30,24 @@ public class Feed implements Serializable {
     private static final String TAG = "com.stario.FeedItem";
     private static final String FEED_TITLE = "com.stario.FEED_TITLE";
     private static final String FEED_RSS = "com.stario.FEED_RSS";
+    private static final String FEED_CATEGORY = "com.stario.FEED_CATEGORY";
+    private static final String FEED_IN_UNIFIED = "com.stario.FEED_IN_UNIFIED";
 
     private final String rss;
 
     String title;
+    String category;
+    boolean includeInUnified;
 
     public Feed(@NonNull String title, @NonNull String rss) {
+        this(title, rss, null, true);
+    }
+
+    public Feed(@NonNull String title, @NonNull String rss, String category, boolean includeInUnified) {
         this.title = title;
         this.rss = rss;
+        this.category = category;
+        this.includeInUnified = includeInUnified;
     }
 
     public String getTitle() {
@@ -48,12 +58,32 @@ public class Feed implements Serializable {
         return rss;
     }
 
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public boolean isIncludedInUnified() {
+        return includeInUnified;
+    }
+
+    public void setIncludeInUnified(boolean include) {
+        this.includeInUnified = include;
+    }
+
     public static Feed deserialize(String data) {
         try {
             JSONObject jsonObject = new JSONObject(data);
 
-            return new Feed(jsonObject.getString(FEED_TITLE),
-                    jsonObject.getString(FEED_RSS));
+            String title = jsonObject.getString(FEED_TITLE);
+            String rss = jsonObject.getString(FEED_RSS);
+            String category = jsonObject.optString(FEED_CATEGORY, null);
+            boolean includeInUnified = jsonObject.optBoolean(FEED_IN_UNIFIED, true);
+
+            return new Feed(title, rss, category, includeInUnified);
         } catch (Exception exception) {
             Log.e(TAG, "deserialize: Serialized object has corrupt data.");
 
@@ -65,10 +95,19 @@ public class Feed implements Serializable {
         if (rss.isEmpty()) {
             return null;
         } else {
-            return "{" +
-                    "\"" + FEED_TITLE + "\":\"" + title + "\"," +
-                    "\"" + FEED_RSS + "\":\"" + rss + "\"" +
-                    "}";
+            try {
+                JSONObject obj = new JSONObject();
+                obj.put(FEED_TITLE, title);
+                obj.put(FEED_RSS, rss);
+                if (category != null) {
+                    obj.put(FEED_CATEGORY, category);
+                }
+                obj.put(FEED_IN_UNIFIED, includeInUnified);
+                return obj.toString();
+            } catch (Exception e) {
+                Log.e(TAG, "serialize: Error serializing feed.", e);
+                return null;
+            }
         }
     }
 

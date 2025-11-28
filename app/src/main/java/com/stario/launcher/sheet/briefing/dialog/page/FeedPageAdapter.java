@@ -42,6 +42,7 @@ import com.prof18.rssparser.model.RssItem;
 import com.stario.launcher.R;
 import com.stario.launcher.Stario;
 import com.stario.launcher.preferences.Vibrations;
+import com.stario.launcher.sheet.briefing.dialog.page.feed.BriefingFeedList;
 import com.stario.launcher.ui.common.text.LinkMovementMethodWithFallback;
 import com.stario.launcher.ui.utils.animation.Animation;
 import com.stario.launcher.utils.Utils;
@@ -53,7 +54,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
+class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> 
+        implements ArticleStateManager.StateChangeListener {
     private static final Safelist CONTENT_SAFELIST = new Safelist() {
         {
             addTags(
@@ -68,12 +70,38 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
 
     private final Stario context;
     private List<RssItem> items;
+    private ArticleStateManager stateManager;
+    private String feedTitle;
+    private int feedPosition;
 
     private volatile long lastUpdate = -1;
 
     public FeedPageAdapter(Stario context) {
         this.context = context;
         this.items = Collections.synchronizedList(new ArrayList<>());
+        this.feedPosition = -1;
+    }
+
+    public void setFeedPosition(int position) {
+        this.feedPosition = position;
+        if (feedPosition >= 0 && feedPosition < BriefingFeedList.getInstance().size()) {
+            this.feedTitle = BriefingFeedList.getInstance().get(feedPosition).getTitle();
+        }
+    }
+
+    public void setStateManager(ArticleStateManager manager) {
+        if (this.stateManager != null) {
+            this.stateManager.removeStateChangeListener(this);
+        }
+        this.stateManager = manager;
+        if (this.stateManager != null) {
+            this.stateManager.addStateChangeListener(this);
+        }
+    }
+
+    @Override
+    public void onStateChanged() {
+        notifyDataSetChanged();
     }
 
     public void update(@NonNull List<RssItem> items) {
@@ -111,6 +139,8 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
         private final TextView description;
         private final TextView author;
         private final TextView category;
+        private final ImageView favoriteButton;
+        private final ImageView favoriteButtonNoImage;
 
         public ViewHolder(View itemView) {
             super(itemView);
@@ -121,6 +151,8 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
             description = itemView.findViewById(R.id.description);
             author = itemView.findViewById(R.id.author);
             category = itemView.findViewById(R.id.category);
+            favoriteButton = itemView.findViewById(R.id.favorite_button);
+            favoriteButtonNoImage = itemView.findViewById(R.id.favorite_button_no_image);
 
             itemView.setClipToOutline(true);
             itemView.setOnClickListener(this);
@@ -131,6 +163,34 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
                     itemView.performClick();
                 }
             });
+            
+            // Set up favorite button click listeners
+            View.OnClickListener favoriteClickListener = v -> {
+                int index = getBindingAdapterPosition();
+                if (index == RecyclerView.NO_POSITION || stateManager == null) {
+                    return;
+                }
+                
+                RssItem item = items.get(index);
+                Vibrations.getInstance().vibrate();
+                stateManager.toggleFavorite(item, feedTitle != null ? feedTitle : "");
+                updateFavoriteButton(item);
+            };
+            
+            favoriteButton.setOnClickListener(favoriteClickListener);
+            favoriteButtonNoImage.setOnClickListener(favoriteClickListener);
+        }
+        
+        private void updateFavoriteButton(RssItem item) {
+            if (stateManager == null) {
+                return;
+            }
+            
+            boolean isFavorite = stateManager.isFavorite(item);
+            int iconRes = isFavorite ? R.drawable.ic_favorite : R.drawable.ic_favorite_outline;
+            
+            favoriteButton.setImageResource(iconRes);
+            favoriteButtonNoImage.setImageResource(iconRes);
         }
 
         @Override
@@ -142,6 +202,11 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
 
             RssItem item = items.get(index);
             Vibrations.getInstance().vibrate();
+
+            // Mark article as read when clicked
+            if (stateManager != null) {
+                stateManager.markAsRead(item);
+            }
 
             Intent intent = null;
             if (item.getLink() != null) {
@@ -172,6 +237,7 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
         String image = item.getImage();
         if (image != null) {
             viewHolder.representative.setVisibility(View.VISIBLE);
+            viewHolder.favoriteButtonNoImage.setVisibility(View.GONE);
 
             Glide.with(context)
                     .load(image)
@@ -180,6 +246,7 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
                         public boolean onLoadFailed(@Nullable GlideException exception, Object model,
                                                     @NonNull Target<Drawable> target, boolean isFirstResource) {
                             viewHolder.representative.setVisibility(View.GONE);
+                            viewHolder.favoriteButtonNoImage.setVisibility(View.VISIBLE);
 
                             return false;
                         }
@@ -207,7 +274,11 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
                     .into(viewHolder.display);
         } else {
             viewHolder.representative.setVisibility(View.GONE);
+            viewHolder.favoriteButtonNoImage.setVisibility(View.VISIBLE);
         }
+        
+        // Update favorite button state
+        viewHolder.updateFavoriteButton(item);
 
         if (item.getTitle() != null && !item.getTitle().isEmpty()) {
             Spanned title = cleanHtml(item.getTitle());
@@ -215,6 +286,15 @@ class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> {
             if (!title.toString().isEmpty()) {
                 viewHolder.title.setText(title);
                 viewHolder.title.setVisibility(View.VISIBLE);
+                
+                // Issue #5: Bold text for unread articles, normal for read
+                if (stateManager != null && stateManager.isRead(item)) {
+                    viewHolder.title.setTypeface(null, android.graphics.Typeface.NORMAL);
+                    viewHolder.title.setAlpha(0.7f);
+                } else {
+                    viewHolder.title.setTypeface(null, android.graphics.Typeface.BOLD);
+                    viewHolder.title.setAlpha(1.0f);
+                }
             }
         }
 

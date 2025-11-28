@@ -175,6 +175,8 @@
     <string name="fetching_feed">Fetching</string>
     <string name="no_connection">No internet connection</string>
     <string name="already_subscribed">You are already subscribed to this feed!</string>
+    <string name="favorite">Favorite</string>
+    <string name="favorites">Favorites</string>
 
     <!-- Search -->
     <string name="search_on">Search on</string>
