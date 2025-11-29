@@ -236,8 +236,9 @@ public class FeedPage extends Fragment implements ArticleStateManager.StateChang
             return;
         }
 
-        if (adapter == null || position < 0 ||
-                position >= BriefingFeedList.from(activity).size()) {
+        // Validate position is still valid
+        BriefingFeedList feedList = BriefingFeedList.from(activity);
+        if (adapter == null || position < 0 || position >= feedList.size()) {
             showErrorState();
 
             return;
@@ -267,12 +268,24 @@ public class FeedPage extends Fragment implements ArticleStateManager.StateChang
         }
 
         runningTask = Utils.submitTask(() -> {
-            Feed feed = BriefingFeedList.getInstance().get(position);
+            // Re-validate position inside the task in case it changed
+            BriefingFeedList taskFeedList = BriefingFeedList.getInstance();
+            if (position < 0 || position >= taskFeedList.size()) {
+                UiUtils.post(this::showErrorState);
+                return;
+            }
+            
+            Feed feed = taskFeedList.get(position);
+            if (feed == null) {
+                UiUtils.post(this::showErrorState);
+                return;
+            }
+            
             List<RssItem> items;
             
             // Check if this is a special feed
             if (UnifiedFeed.isUnifiedFeed(feed)) {
-                items = UnifiedFeed.fetchUnifiedArticles(BriefingFeedList.getInstance());
+                items = UnifiedFeed.fetchUnifiedArticles(taskFeedList);
             } else if (FavoritesFeed.isFavoritesFeed(feed)) {
                 items = FavoritesFeed.fetchFavoriteArticles(stateManager);
             } else {
@@ -333,5 +346,16 @@ public class FeedPage extends Fragment implements ArticleStateManager.StateChang
 
     public RecyclerView getRecycler() {
         return recyclerView;
+    }
+    
+    /**
+     * Update the position of this feed page.
+     * This is called when the feed list changes and fragments are recreated.
+     */
+    public void setPosition(int position) {
+        this.position = position;
+        if (adapter != null) {
+            adapter.setFeedPosition(position);
+        }
     }
 }

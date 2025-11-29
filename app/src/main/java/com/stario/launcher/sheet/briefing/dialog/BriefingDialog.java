@@ -97,19 +97,25 @@ public class BriefingDialog extends SheetDialogFragment {
         };
         this.feedListener = new BriefingFeedList.FeedListener() {
             private void notifyUpdate() {
+                // Save current position before updating
+                int currentPosition = pager.getCurrentItem();
+                int newCount = list.size();
+                
                 adapter.notifyDataSetChanged();
                 tabs.setViewPager(pager);
 
-                if (adapter.getCount() > 0) {
-                    pager.setCurrentItem(0, true);
-                    observePageRecycler(0);
+                if (newCount > 0) {
+                    // Ensure we don't try to navigate to a position that doesn't exist
+                    int targetPosition = Math.min(currentPosition, newCount - 1);
+                    pager.setCurrentItem(targetPosition, false);
+                    observePageRecycler(targetPosition);
                 } else {
                     observePageRecycler(null);
                 }
 
                 updateHeader(recyclerToBeObserved);
 
-                if (adapter.getCount() > 0) {
+                if (newCount > 0) {
                     placeholder.setVisibility(View.GONE);
                     main.setVisibility(View.VISIBLE);
                 } else {

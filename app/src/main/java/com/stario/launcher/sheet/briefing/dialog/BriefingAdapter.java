@@ -40,7 +40,7 @@ public class BriefingAdapter extends FragmentPagerAdapter {
     private final BriefingFeedList list;
 
     public BriefingAdapter(ThemedActivity activity, FragmentManager fragmentManager) {
-        super(fragmentManager);
+        super(fragmentManager, BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT);
 
         this.registeredFragments = new HashMap<>();
         this.list = BriefingFeedList.from(activity);
@@ -59,6 +59,7 @@ public class BriefingAdapter extends FragmentPagerAdapter {
 
     @Override
     public int getItemPosition(@NonNull Object object) {
+        // Force recreation of all fragments when data changes
         return PagerAdapter.POSITION_NONE;
     }
 
@@ -66,6 +67,8 @@ public class BriefingAdapter extends FragmentPagerAdapter {
     @Override
     public Object instantiateItem(@NonNull ViewGroup container, int position) {
         FeedPage fragment = (FeedPage) super.instantiateItem(container, position);
+        // Ensure the fragment has the correct position
+        fragment.setPosition(position);
         registeredFragments.put(position, new WeakReference<>(fragment));
 
         return fragment;
