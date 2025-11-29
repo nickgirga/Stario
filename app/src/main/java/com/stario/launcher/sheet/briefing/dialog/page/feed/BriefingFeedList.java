@@ -417,7 +417,15 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
             return;
         }
 
+        // Save the category before removing
+        String category = feed.getCategory();
+        
+        // Remove from visible items
         items.remove(position);
+        
+        // Remove from allFeedObjects map to prevent it from being re-added
+        allFeedObjects.remove(feed.getRSSLink());
+        
         serialize();
 
         for (FeedListener listener : listeners) {
@@ -427,6 +435,23 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         // Update special feeds status
         ensureUnifiedFeed();
         ensureCategoryFeeds();
+        
+        // Notify affected CategoryFeed and UnifiedFeed to refresh their articles
+        for (int i = 0; i < items.size(); i++) {
+            Feed item = items.get(i);
+            if (UnifiedFeed.isUnifiedFeed(item)) {
+                for (FeedListener listener : listeners) {
+                    listener.onUpdated(i);
+                }
+            } else if (CategoryFeed.isCategoryFeed(item)) {
+                CategoryFeed categoryFeed = (CategoryFeed) item;
+                if (category != null && !category.isEmpty() && categoryFeed.getCategoryName().equals(category)) {
+                    for (FeedListener listener : listeners) {
+                        listener.onUpdated(i);
+                    }
+                }
+            }
+        }
     }
     
     /**

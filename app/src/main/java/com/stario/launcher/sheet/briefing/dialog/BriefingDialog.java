@@ -247,7 +247,17 @@ public class BriefingDialog extends SheetDialogFragment {
                                                         
                                                         feedActionMenu.add(new PopupMenu.Item(resources.getString(R.string.remove),
                                                                 ResourcesCompat.getDrawable(resources, R.drawable.ic_delete, activity.getTheme()),
-                                                                actionView -> list.removeFeedFromStorage(categoryMemberFeed)));
+                                                                actionView -> {
+                                                                    // Show confirmation dialog
+                                                                    android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(activity)
+                                                                            .setTitle("Remove Feed")
+                                                                            .setMessage("Are you sure you want to remove \"" + categoryMemberFeed.getTitle() + "\"?")
+                                                                            .setPositiveButton("Remove", (d, which) -> list.removeFeedFromStorage(categoryMemberFeed))
+                                                                            .setNegativeButton("Cancel", null)
+                                                                            .create();
+                                                                    dialog.show();
+                                                                    applyRoundedDialogBackground(dialog);
+                                                                }));
                                                         
                                                         feedActionMenu.show(activity, tab, PopupMenu.PIVOT_CENTER_HORIZONTAL);
                                                     }, 100);
@@ -265,30 +275,76 @@ public class BriefingDialog extends SheetDialogFragment {
                 
                 menu.add(new PopupMenu.Item(resources.getString(R.string.remove),
                         ResourcesCompat.getDrawable(resources, R.drawable.ic_delete, activity.getTheme()),
-                        view -> list.removeCategory(categoryName)));
+                        view -> {
+                            // Show confirmation dialog for category removal
+                            android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(activity)
+                                    .setTitle("Remove Category")
+                                    .setMessage("Are you sure you want to remove the category \"" + categoryName + "\" and all its feeds?")
+                                    .setPositiveButton("Remove", (d, which) -> list.removeCategory(categoryName))
+                                    .setNegativeButton("Cancel", null)
+                                    .create();
+                            dialog.show();
+                            applyRoundedDialogBackground(dialog);
+                        }));
             } else {
                 // Regular feed menu
-                menu.add(new PopupMenu.Item(resources.getString(R.string.remove),
+                // Determine button text based on feed type
+                String removeButtonText;
+                if (com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed.isUnifiedFeed(feed) ||
+                    com.stario.launcher.sheet.briefing.dialog.page.feed.FavoritesFeed.isFavoritesFeed(feed)) {
+                    removeButtonText = "Disable";
+                } else {
+                    removeButtonText = resources.getString(R.string.remove);
+                }
+                
+                menu.add(new PopupMenu.Item(removeButtonText,
                         ResourcesCompat.getDrawable(resources, R.drawable.ic_delete, activity.getTheme()),
                         view -> {
                             // For UnifiedFeed and FavoritesFeed, disable via settings instead of removing
                             if (com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed.isUnifiedFeed(feed)) {
-                                activity.getApplicationContext()
-                                        .getSharedPreferences(com.stario.launcher.preferences.Entry.BRIEFING)
-                                        .edit()
-                                        .putBoolean(com.stario.launcher.activities.settings.Settings.UNIFIED_FEED_ENABLED, false)
-                                        .apply();
-                                list.refreshFeeds();
+                                // Show confirmation dialog for disabling All Feeds
+                                android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(activity)
+                                        .setTitle("Disable All Feeds")
+                                        .setMessage("Are you sure you want to disable the \"All Feeds\" feed?")
+                                        .setPositiveButton("Disable", (d, which) -> {
+                                            activity.getApplicationContext()
+                                                    .getSharedPreferences(com.stario.launcher.preferences.Entry.BRIEFING)
+                                                    .edit()
+                                                    .putBoolean(com.stario.launcher.activities.settings.Settings.UNIFIED_FEED_ENABLED, false)
+                                                    .apply();
+                                            list.refreshFeeds();
+                                        })
+                                        .setNegativeButton("Cancel", null)
+                                        .create();
+                                dialog.show();
+                                applyRoundedDialogBackground(dialog);
                             } else if (com.stario.launcher.sheet.briefing.dialog.page.feed.FavoritesFeed.isFavoritesFeed(feed)) {
-                                activity.getApplicationContext()
-                                        .getSharedPreferences(com.stario.launcher.preferences.Entry.BRIEFING)
-                                        .edit()
-                                        .putBoolean(com.stario.launcher.activities.settings.Settings.FAVORITES_FEED_ENABLED, false)
-                                        .apply();
-                                list.refreshFeeds();
+                                // Show confirmation dialog for disabling Favorites
+                                android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(activity)
+                                        .setTitle("Disable Favorites")
+                                        .setMessage("Are you sure you want to disable the \"Favorites\" feed?")
+                                        .setPositiveButton("Disable", (d, which) -> {
+                                            activity.getApplicationContext()
+                                                    .getSharedPreferences(com.stario.launcher.preferences.Entry.BRIEFING)
+                                                    .edit()
+                                                    .putBoolean(com.stario.launcher.activities.settings.Settings.FAVORITES_FEED_ENABLED, false)
+                                                    .apply();
+                                            list.refreshFeeds();
+                                        })
+                                        .setNegativeButton("Cancel", null)
+                                        .create();
+                                dialog.show();
+                                applyRoundedDialogBackground(dialog);
                             } else {
-                                // Regular feed - remove normally
-                                list.remove(position);
+                                // Regular feed - show confirmation dialog
+                                android.app.AlertDialog dialog = new android.app.AlertDialog.Builder(activity)
+                                        .setTitle("Remove Feed")
+                                        .setMessage("Are you sure you want to remove \"" + feed.getTitle() + "\"?")
+                                        .setPositiveButton("Remove", (d, which) -> list.remove(position))
+                                        .setNegativeButton("Cancel", null)
+                                        .create();
+                                dialog.show();
+                                applyRoundedDialogBackground(dialog);
                             }
                         }));
 
@@ -443,6 +499,15 @@ public class BriefingDialog extends SheetDialogFragment {
 
         if (listener != null) {
             listener.reset();
+        }
+    }
+    
+    /**
+     * Apply Material 3 rounded background to AlertDialog
+     */
+    private void applyRoundedDialogBackground(android.app.AlertDialog dialog) {
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(R.drawable.dialog_background);
         }
     }
 
