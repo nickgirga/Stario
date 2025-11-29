@@ -178,6 +178,9 @@
     <string name="favorite">Favorite</string>
     <string name="favorites">Favorites</string>
     <string name="no_favorites">No favorites yet</string>
+    <string name="unified_feed">Unified feed</string>
+    <string name="favorites_feed">Favorites feed</string>
+    <string name="show_favorite_buttons">Show favorite buttons</string>
 
     <!-- Search -->
     <string name="search_on">Search on</string>

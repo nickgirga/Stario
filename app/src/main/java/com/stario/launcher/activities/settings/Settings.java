@@ -84,6 +84,11 @@ import com.stario.launcher.utils.Utils;
 import java.util.UUID;
 
 public class Settings extends ThemedActivity {
+    // Briefing preference keys
+    public static final String UNIFIED_FEED_ENABLED = "com.stario.UNIFIED_FEED_ENABLED";
+    public static final String FAVORITES_FEED_ENABLED = "com.stario.FAVORITES_FEED_ENABLED";
+    public static final String SHOW_FAVORITE_BUTTONS = "com.stario.SHOW_FAVORITE_BUTTONS";
+    
     private MaterialSwitch lockAnimSwitch;
     private CollapsibleTitleBar titleBar;
     private View titleMeasurePlaceholder;
@@ -91,6 +96,7 @@ public class Settings extends ThemedActivity {
     private TextView pinnedCategoryName;
     private MaterialSwitch mediaSwitch;
     private SharedPreferences settings;
+    private SharedPreferences briefing;
     private NestedScrollView scroller;
     private MaterialSwitch lockSwitch;
     private TextView searchEngineName;
@@ -124,6 +130,7 @@ public class Settings extends ThemedActivity {
         icons = stario.getSharedPreferences(Entry.ICONS);
         search = stario.getSharedPreferences(Entry.SEARCH);
         pins = stario.getSharedPreferences(Entry.PINNED_CATEGORY);
+        briefing = stario.getSharedPreferences(Entry.BRIEFING);
         SharedPreferences theme = stario.getSharedPreferences(Entry.THEME);
         SharedPreferences weather = stario.getSharedPreferences(Entry.WEATHER);
 
@@ -136,6 +143,9 @@ public class Settings extends ThemedActivity {
         boolean searchResults = search.getBoolean(WebAdapter.SEARCH_RESULTS, false);
         boolean searchHiddenApps = search.getBoolean(SearchFragment.SEARCH_HIDDEN_APPS, false);
         boolean pinnedCategoryVisible = pins.getBoolean(PinnedCategory.PINNED_CATEGORY_VISIBLE, false);
+        boolean unifiedFeedEnabled = briefing.getBoolean(UNIFIED_FEED_ENABLED, true);
+        boolean favoritesFeedEnabled = briefing.getBoolean(FAVORITES_FEED_ENABLED, true);
+        boolean showFavoriteButtons = briefing.getBoolean(SHOW_FAVORITE_BUTTONS, true);
 
         ActivityResultLauncher<Intent> activityResultLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
@@ -157,6 +167,9 @@ public class Settings extends ThemedActivity {
         MaterialSwitch switchVibrations = findViewById(R.id.vibrations);
         MaterialSwitch switchWeather = findViewById(R.id.weather);
         MaterialSwitch switchSearchHiddenApps = findViewById(R.id.search_hidden_apps);
+        MaterialSwitch switchUnifiedFeed = findViewById(R.id.unified_feed);
+        MaterialSwitch switchFavoritesFeed = findViewById(R.id.favorites_feed);
+        MaterialSwitch switchShowFavoriteButtons = findViewById(R.id.show_favorite_buttons);
 
         View pinnedCategoryContainer = findViewById(R.id.pinned_category_container);
         lockAnimSwitchContainer = findViewById(R.id.lock_animation_container);
@@ -211,6 +224,13 @@ public class Settings extends ThemedActivity {
         switchVibrations.jumpDrawablesToCurrentState();
         switchSearchHiddenApps.jumpDrawablesToCurrentState();
         switchWeather.setChecked(weatherForecast);
+        switchUnifiedFeed.setChecked(unifiedFeedEnabled);
+        switchFavoritesFeed.setChecked(favoritesFeedEnabled);
+        switchShowFavoriteButtons.setChecked(showFavoriteButtons);
+
+        switchUnifiedFeed.jumpDrawablesToCurrentState();
+        switchFavoritesFeed.jumpDrawablesToCurrentState();
+        switchShowFavoriteButtons.jumpDrawablesToCurrentState();
 
         mediaSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             private NotificationConfigurator dialog;
@@ -315,6 +335,24 @@ public class Settings extends ThemedActivity {
             //noinspection deprecation
             LocalBroadcastManager.getInstance(this)
                     .sendBroadcastSync(new Intent(Weather.ACTION_REQUEST_UPDATE));
+        });
+
+        switchUnifiedFeed.setOnCheckedChangeListener((compound, isChecked) -> {
+            briefing.edit()
+                    .putBoolean(UNIFIED_FEED_ENABLED, isChecked)
+                    .apply();
+        });
+
+        switchFavoritesFeed.setOnCheckedChangeListener((compound, isChecked) -> {
+            briefing.edit()
+                    .putBoolean(FAVORITES_FEED_ENABLED, isChecked)
+                    .apply();
+        });
+
+        switchShowFavoriteButtons.setOnCheckedChangeListener((compound, isChecked) -> {
+            briefing.edit()
+                    .putBoolean(SHOW_FAVORITE_BUTTONS, isChecked)
+                    .apply();
         });
 
         themeName.setText(getThemeType().getDisplayName());
@@ -591,6 +629,9 @@ public class Settings extends ThemedActivity {
         findViewById(R.id.vibrations_container).setOnClickListener((view) -> switchVibrations.performClick());
         findViewById(R.id.weather_container).setOnClickListener((view) -> switchWeather.performClick());
         findViewById(R.id.search_hidden_apps_container).setOnClickListener((view) -> switchSearchHiddenApps.performClick());
+        findViewById(R.id.unified_feed_container).setOnClickListener((view) -> switchUnifiedFeed.performClick());
+        findViewById(R.id.favorites_feed_container).setOnClickListener((view) -> switchFavoritesFeed.performClick());
+        findViewById(R.id.show_favorite_buttons_container).setOnClickListener((view) -> switchShowFavoriteButtons.performClick());
         updateLockAnimationState(lockSwitch.isChecked());
 
         UiUtils.Notch.applyNotchMargin(findViewById(R.id.coordinator), UiUtils.Notch.Treatment.CENTER);
