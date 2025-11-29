@@ -53,6 +53,7 @@ public class FavoritesDialog extends ActionDialog implements ArticleStateManager
     private FeedPageAdapter adapter;
     private ArticleStateManager stateManager;
     private ViewGroup emptyView;
+    private android.content.SharedPreferences.OnSharedPreferenceChangeListener preferenceListener;
 
     public FavoritesDialog(@NonNull ThemedActivity activity) {
         super(activity);
@@ -91,6 +92,20 @@ public class FavoritesDialog extends ActionDialog implements ArticleStateManager
         Measurements.addNavListener(bottomInset ->
                 recyclerView.setPadding(recyclerView.getPaddingLeft(), Measurements.dpToPx(20),
                         recyclerView.getPaddingRight(), bottomInset));
+
+        // Listen for preference changes directly
+        preferenceListener = (sharedPreferences, key) -> {
+            if (com.stario.launcher.activities.settings.Settings.SHOW_FAVORITE_BUTTONS.equals(key)) {
+                android.util.Log.d("FavoritesDialog", "Preference changed! Refreshing favorite buttons visibility");
+                if (adapter != null) {
+                    adapter.refreshFavoriteButtonsVisibility();
+                }
+            }
+        };
+        
+        // Register preference listener
+        activity.getApplicationContext().getSharedPreferences(com.stario.launcher.preferences.Entry.BRIEFING)
+                .registerOnSharedPreferenceChangeListener(preferenceListener);
 
         loadFavorites();
 
@@ -139,11 +154,29 @@ public class FavoritesDialog extends ActionDialog implements ArticleStateManager
         }
     }
 
+    /**
+     * Public method to refresh favorite buttons visibility.
+     * Called directly from Settings when the preference changes.
+     */
+    public void refreshFavoriteButtonsVisibility() {
+        android.util.Log.d("FavoritesDialog", "refreshFavoriteButtonsVisibility() called directly");
+        if (adapter != null) {
+            adapter.refreshFavoriteButtonsVisibility();
+        }
+    }
+
     @Override
     public void dismiss() {
+        // Unregister preference listener
+        if (preferenceListener != null) {
+            activity.getApplicationContext().getSharedPreferences(com.stario.launcher.preferences.Entry.BRIEFING)
+                    .unregisterOnSharedPreferenceChangeListener(preferenceListener);
+        }
+        
         if (stateManager != null) {
             stateManager.removeStateChangeListener(this);
         }
+        
         super.dismiss();
     }
 }

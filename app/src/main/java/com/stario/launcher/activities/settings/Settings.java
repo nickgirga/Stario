@@ -110,6 +110,7 @@ public class Settings extends ThemedActivity {
     private View searchEngine;
     private ViewGroup content;
     private View fader;
+    private FavoritesDialog favoritesDialog;
 
     public Settings() {
         super();
@@ -356,6 +357,7 @@ public class Settings extends ThemedActivity {
         });
 
         switchShowFavoriteButtons.setOnCheckedChangeListener((compound, isChecked) -> {
+            android.util.Log.d("Settings", "Show favorite buttons toggled to: " + isChecked);
             briefing.edit()
                     .putBoolean(SHOW_FAVORITE_BUTTONS, isChecked)
                     .apply();
@@ -365,6 +367,13 @@ public class Settings extends ThemedActivity {
             //noinspection deprecation
             androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this)
                     .sendBroadcast(intent);
+            android.util.Log.d("Settings", "Broadcast sent: com.stario.FAVORITE_BUTTONS_CHANGED");
+            
+            // Directly call the dialog's refresh method if it exists
+            if (favoritesDialog != null) {
+                android.util.Log.d("Settings", "Calling dialog.refreshFavoriteButtonsVisibility() directly");
+                favoritesDialog.refreshFavoriteButtonsVisibility();
+            }
         });
 
         themeName.setText(getThemeType().getDisplayName());
@@ -566,21 +575,20 @@ public class Settings extends ThemedActivity {
         });
 
         findViewById(R.id.favorites).setOnClickListener(new View.OnClickListener() {
-            private FavoritesDialog dialog;
             private boolean showing = false;
 
             @Override
             public void onClick(View view) {
-                if (dialog == null) {
-                    dialog = new FavoritesDialog(Settings.this);
+                if (favoritesDialog == null) {
+                    favoritesDialog = new FavoritesDialog(Settings.this);
 
-                    dialog.setOnDismissListener(dialog -> {
+                    favoritesDialog.setOnDismissListener(dialog -> {
                         showing = false;
                     });
                 }
 
                 if (!showing) {
-                    dialog.show();
+                    favoritesDialog.show();
                     showing = true;
                 }
             }
