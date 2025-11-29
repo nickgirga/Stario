@@ -60,6 +60,7 @@ import com.stario.launcher.activities.settings.dialogs.hide.HideApplicationsDial
 import com.stario.launcher.activities.settings.dialogs.icons.IconsDialog;
 import com.stario.launcher.activities.settings.dialogs.license.LicensesDialog;
 import com.stario.launcher.activities.settings.dialogs.location.LocationDialog;
+import com.stario.launcher.activities.settings.dialogs.nextcloud.NextcloudSyncDialog;
 import com.stario.launcher.activities.settings.dialogs.pin.PinnedCategoryDialog;
 import com.stario.launcher.activities.settings.dialogs.search.engine.SearchEngineDialog;
 import com.stario.launcher.activities.settings.dialogs.search.results.SearchResultsDialog;
@@ -589,6 +590,27 @@ public class Settings extends ThemedActivity {
 
                 if (!showing) {
                     favoritesDialog.show();
+                    showing = true;
+                }
+            }
+        });
+
+        findViewById(R.id.nextcloud_sync).setOnClickListener(new View.OnClickListener() {
+            private NextcloudSyncDialog dialog;
+            private boolean showing = false;
+
+            @Override
+            public void onClick(View view) {
+                if (dialog == null) {
+                    dialog = new NextcloudSyncDialog(Settings.this);
+
+                    dialog.setOnDismissListener(d -> {
+                        showing = false;
+                    });
+                }
+
+                if (!showing) {
+                    dialog.show();
                     showing = true;
                 }
             }

@@ -686,6 +686,21 @@
             android:textSize="20sp"
             app:carbon_cornerRadius="5dp" />
 
+        <carbon.widget.TextView
+            android:id="@+id/nextcloud_sync"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/ripple"
+            android:drawableStart="@drawable/ic_newspaper"
+            android:drawablePadding="10dp"
+            android:fontFamily="@font/dm_sans_medium"
+            android:letterSpacing="-0.03"
+            android:padding="15dp"
+            android:text="@string/nextcloud_sync"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="20sp"
+            app:carbon_cornerRadius="5dp" />
+
     </carbon.widget.LinearLayout>
 
     <TextView

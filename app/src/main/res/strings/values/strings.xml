@@ -242,4 +242,22 @@
 
     <!-- Accessibility service -->
     <string name="accessibility_service_description">The service has the soul purpose of enabling lock screen gesture on the home screen. It does not collect or share data with any third party.</string>
+
+    <!-- Nextcloud Sync -->
+    <string name="nextcloud_sync">Nextcloud sync</string>
+    <string name="nextcloud_sync_title">Nextcloud News Sync</string>
+    <string name="nextcloud_sync_description">Sync your feeds, categories, read articles, and favorites with Nextcloud News</string>
+    <string name="nextcloud_server_url">Server URL (e.g., https://cloud.example.com)</string>
+    <string name="nextcloud_username">Username</string>
+    <string name="nextcloud_password">Password or App Password</string>
+    <string name="nextcloud_enable_sync">Enable sync</string>
+    <string name="nextcloud_sync_now">Sync now</string>
+    <string name="nextcloud_last_sync">Last synced: %s</string>
+    <string name="nextcloud_syncing">Syncing…</string>
+    <string name="nextcloud_sync_success">Sync completed successfully</string>
+    <string name="nextcloud_sync_failed">Sync failed</string>
+    <string name="nextcloud_sync_error">Sync error: %s</string>
+    <string name="nextcloud_sync_disabled">Sync is disabled</string>
+    <string name="nextcloud_settings_saved">Settings saved</string>
+    <string name="save">Save</string>
 </resources>

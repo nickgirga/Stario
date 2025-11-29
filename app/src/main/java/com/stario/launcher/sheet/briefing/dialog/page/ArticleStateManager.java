@@ -242,6 +242,7 @@ public class ArticleStateManager {
         public final String author;
         public final String pubDate;
         public final long timestamp;
+        public final List<String> categories;
 
         public FavoriteArticle(RssItem item, String feedTitle) {
             this.articleId = item.getLink() != null ? item.getLink() : 
@@ -259,11 +260,12 @@ public class ArticleStateManager {
             this.author = item.getAuthor();
             this.pubDate = item.getPubDate();
             this.timestamp = System.currentTimeMillis();
+            this.categories = item.getCategories() != null ? new ArrayList<>(item.getCategories()) : new ArrayList<>();
         }
 
         private FavoriteArticle(String articleId, String feedTitle, String title,
                                String description, String link, String image, 
-                               String author, String pubDate, long timestamp) {
+                               String author, String pubDate, long timestamp, List<String> categories) {
             this.articleId = articleId;
             this.feedTitle = feedTitle;
             this.title = title;
@@ -273,6 +275,7 @@ public class ArticleStateManager {
             this.author = author;
             this.pubDate = pubDate;
             this.timestamp = timestamp;
+            this.categories = categories != null ? categories : new ArrayList<>();
         }
 
         public JSONObject toJSON() throws JSONException {
@@ -286,11 +289,30 @@ public class ArticleStateManager {
             obj.put("author", author);
             obj.put("pubDate", pubDate);
             obj.put("timestamp", timestamp);
+            
+            // Save categories
+            if (categories != null && !categories.isEmpty()) {
+                JSONArray categoriesArray = new JSONArray();
+                for (String category : categories) {
+                    categoriesArray.put(category);
+                }
+                obj.put("categories", categoriesArray);
+            }
+            
             return obj;
         }
 
         public static FavoriteArticle fromJSON(JSONObject obj) {
             try {
+                // Load categories
+                List<String> categories = new ArrayList<>();
+                if (obj.has("categories")) {
+                    JSONArray categoriesArray = obj.getJSONArray("categories");
+                    for (int i = 0; i < categoriesArray.length(); i++) {
+                        categories.add(categoriesArray.getString(i));
+                    }
+                }
+                
                 return new FavoriteArticle(
                     obj.getString("id"),
                     obj.getString("feedTitle"),
@@ -300,7 +322,8 @@ public class ArticleStateManager {
                     obj.optString("image", null),
                     obj.optString("author", null),
                     obj.optString("pubDate", null),
-                    obj.getLong("timestamp")
+                    obj.getLong("timestamp"),
+                    categories
                 );
             } catch (JSONException e) {
                 return null;
@@ -326,7 +349,7 @@ public class ArticleStateManager {
                     null,                               // video
                     feedTitle,                          // sourceName (show which feed it's from)
                     null,                               // sourceUrl
-                    new ArrayList<>(),                  // categories
+                    categories,                         // categories (now using stored categories!)
                     null,                               // itunesItemData
                     null,                               // commentsUrl
                     null,                               // youtubeItemData

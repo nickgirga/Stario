@@ -297,6 +297,15 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
         } else {
             viewHolder.representative.setVisibility(View.GONE);
             viewHolder.favoriteButtonNoImage.setVisibility(showFavoriteButtons ? View.VISIBLE : View.GONE);
+            
+            // Show category badge for articles without images
+            if (!item.getCategories().isEmpty()) {
+                String text = item.getCategories().get(0);
+                if (!text.isEmpty()) {
+                    viewHolder.category.setText(text);
+                    viewHolder.category.setVisibility(View.VISIBLE);
+                }
+            }
         }
         
         // Update favorite button state
