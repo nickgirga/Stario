@@ -312,7 +312,7 @@ public class ArticleStateManager {
          */
         public RssItem toRssItem() {
             // Create RssItem with all necessary fields populated
-            // Correct parameter order: guid, title, author, link, pubDate, description, content, ...
+            // Correct parameter order: guid, title, author, link, pubDate, description, content, image, ...
             return new RssItem(
                     link != null ? link : articleId,  // guid
                     title != null ? title : "",        // title
@@ -321,11 +321,11 @@ public class ArticleStateManager {
                     pubDate,                            // pubDate
                     description,                        // description
                     description,                        // content (same as description)
+                    image,                              // image (moved to position 8)
                     null,                               // audio
                     null,                               // video
                     feedTitle,                          // sourceName (show which feed it's from)
                     null,                               // sourceUrl
-                    image,                              // image
                     new ArrayList<>(),                  // categories
                     null,                               // itunesItemData
                     null,                               // commentsUrl
