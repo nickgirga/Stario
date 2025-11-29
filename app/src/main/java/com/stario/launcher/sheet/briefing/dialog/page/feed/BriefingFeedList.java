@@ -23,6 +23,7 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.stario.launcher.activities.settings.Settings;
 import com.stario.launcher.preferences.Entry;
 import com.stario.launcher.sheet.briefing.dialog.page.ArticleStateManager;
 import com.stario.launcher.themes.ThemedActivity;
@@ -50,21 +51,8 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
 
         load(state.getString(FEEDS_KEY, null));
         
-        // Add unified feed as the first item if it doesn't exist
-        boolean hasUnifiedFeed = false;
-        for (Feed feed : items) {
-            if (UnifiedFeed.isUnifiedFeed(feed)) {
-                hasUnifiedFeed = true;
-                break;
-            }
-        }
-        
-        if (!hasUnifiedFeed && items.size() > 1) {
-            items.add(0, new UnifiedFeed());
-            for (FeedListener listener : listeners) {
-                listener.onInserted(0);
-            }
-        }
+        // Ensure unified feed respects the preference setting
+        ensureUnifiedFeed();
         
         // Add favorites feed if there are favorites
         ensureFavoritesFeed();
@@ -143,37 +131,43 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
     }
     
     private void ensureUnifiedFeed() {
+        // Check if unified feed is enabled in settings
+        boolean unifiedFeedEnabled = state.getBoolean(Settings.UNIFIED_FEED_ENABLED, true);
+        
         boolean hasUnifiedFeed = false;
+        int unifiedFeedIndex = -1;
         int regularFeedsCount = 0;
         
-        for (Feed feed : items) {
+        for (int i = 0; i < items.size(); i++) {
+            Feed feed = items.get(i);
             if (UnifiedFeed.isUnifiedFeed(feed)) {
                 hasUnifiedFeed = true;
+                unifiedFeedIndex = i;
             } else if (!FavoritesFeed.isFavoritesFeed(feed)) {
                 regularFeedsCount++;
             }
         }
         
-        if (!hasUnifiedFeed && regularFeedsCount > 1) {
+        // Add unified feed if enabled, we have multiple feeds, and don't have one yet
+        if (unifiedFeedEnabled && !hasUnifiedFeed && regularFeedsCount > 1) {
             items.add(0, new UnifiedFeed());
             for (FeedListener listener : listeners) {
                 listener.onInserted(0);
             }
-        } else if (hasUnifiedFeed && regularFeedsCount <= 1) {
-            // Remove unified feed if we only have one or zero regular feeds
-            for (int i = 0; i < items.size(); i++) {
-                if (UnifiedFeed.isUnifiedFeed(items.get(i))) {
-                    items.remove(i);
-                    for (FeedListener listener : listeners) {
-                        listener.onRemoved(i);
-                    }
-                    break;
-                }
+        } 
+        // Remove unified feed if disabled or we only have one or zero regular feeds
+        else if (hasUnifiedFeed && (!unifiedFeedEnabled || regularFeedsCount <= 1)) {
+            items.remove(unifiedFeedIndex);
+            for (FeedListener listener : listeners) {
+                listener.onRemoved(unifiedFeedIndex);
             }
         }
     }
     
     private void ensureFavoritesFeed() {
+        // Check if favorites feed is enabled in settings
+        boolean favoritesFeedEnabled = state.getBoolean(Settings.FAVORITES_FEED_ENABLED, true);
+        
         boolean hasFavoritesFeed = false;
         int favoritesIndex = -1;
         
@@ -187,7 +181,8 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         
         boolean hasFavorites = stateManager != null && !stateManager.getFavorites().isEmpty();
         
-        if (!hasFavoritesFeed && hasFavorites) {
+        // Add favorites feed if enabled, we have favorites, and don't have one yet
+        if (favoritesFeedEnabled && !hasFavoritesFeed && hasFavorites) {
             // Add favorites feed after unified feed (or at position 0 if no unified feed)
             int insertPosition = 0;
             for (int i = 0; i < items.size(); i++) {
@@ -201,8 +196,9 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
             for (FeedListener listener : listeners) {
                 listener.onInserted(insertPosition);
             }
-        } else if (hasFavoritesFeed && !hasFavorites) {
-            // Remove favorites feed if there are no favorites
+        } 
+        // Remove favorites feed if disabled or there are no favorites
+        else if (hasFavoritesFeed && (!favoritesFeedEnabled || !hasFavorites)) {
             items.remove(favoritesIndex);
             for (FeedListener listener : listeners) {
                 listener.onRemoved(favoritesIndex);
@@ -277,6 +273,15 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         if (listener != null) {
             this.listeners.remove(listener);
         }
+    }
+    
+    /**
+     * Refresh feeds based on current preference settings.
+     * This should be called when preferences change.
+     */
+    public void refreshFeeds() {
+        ensureUnifiedFeed();
+        ensureFavoritesFeed();
     }
     
     @Override

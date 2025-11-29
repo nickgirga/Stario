@@ -341,18 +341,26 @@ public class Settings extends ThemedActivity {
             briefing.edit()
                     .putBoolean(UNIFIED_FEED_ENABLED, isChecked)
                     .apply();
+            
+            // Refresh briefing feeds to apply the change
+            refreshBriefingFeeds();
         });
 
         switchFavoritesFeed.setOnCheckedChangeListener((compound, isChecked) -> {
             briefing.edit()
                     .putBoolean(FAVORITES_FEED_ENABLED, isChecked)
                     .apply();
+            
+            // Refresh briefing feeds to apply the change
+            refreshBriefingFeeds();
         });
 
         switchShowFavoriteButtons.setOnCheckedChangeListener((compound, isChecked) -> {
             briefing.edit()
                     .putBoolean(SHOW_FAVORITE_BUTTONS, isChecked)
                     .apply();
+            
+            // No need to refresh feeds for this setting, it only affects UI
         });
 
         themeName.setText(getThemeType().getDisplayName());
@@ -637,6 +645,14 @@ public class Settings extends ThemedActivity {
         UiUtils.Notch.applyNotchMargin(findViewById(R.id.coordinator), UiUtils.Notch.Treatment.CENTER);
         getRoot().post(this::startPostponedEnterTransition);
         handleOrientation();
+    }
+
+    private void refreshBriefingFeeds() {
+        try {
+            com.stario.launcher.sheet.briefing.dialog.page.feed.BriefingFeedList.getInstance().refreshFeeds();
+        } catch (RuntimeException e) {
+            // BriefingFeedList not initialized yet, which is fine
+        }
     }
 
     private void restart() {

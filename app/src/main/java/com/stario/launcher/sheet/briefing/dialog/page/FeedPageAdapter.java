@@ -18,6 +18,7 @@
 package com.stario.launcher.sheet.briefing.dialog.page;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.text.Spanned;
@@ -41,6 +42,8 @@ import com.bumptech.glide.request.target.Target;
 import com.prof18.rssparser.model.RssItem;
 import com.stario.launcher.R;
 import com.stario.launcher.Stario;
+import com.stario.launcher.activities.settings.Settings;
+import com.stario.launcher.preferences.Entry;
 import com.stario.launcher.preferences.Vibrations;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.BriefingFeedList;
 import com.stario.launcher.ui.common.text.LinkMovementMethodWithFallback;
@@ -234,10 +237,17 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
         viewHolder.description.setVisibility(View.GONE);
         viewHolder.display.setAlpha(0f);
 
+        // Check if favorite buttons should be shown
+        SharedPreferences prefs = context.getSharedPreferences(Entry.BRIEFING);
+        boolean showFavoriteButtons = prefs.getBoolean(Settings.SHOW_FAVORITE_BUTTONS, true);
+
         String image = item.getImage();
         if (image != null) {
             viewHolder.representative.setVisibility(View.VISIBLE);
             viewHolder.favoriteButtonNoImage.setVisibility(View.GONE);
+            
+            // Show/hide favorite button based on preference
+            viewHolder.favoriteButton.setVisibility(showFavoriteButtons ? View.VISIBLE : View.GONE);
 
             Glide.with(context)
                     .load(image)
@@ -246,7 +256,7 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
                         public boolean onLoadFailed(@Nullable GlideException exception, Object model,
                                                     @NonNull Target<Drawable> target, boolean isFirstResource) {
                             viewHolder.representative.setVisibility(View.GONE);
-                            viewHolder.favoriteButtonNoImage.setVisibility(View.VISIBLE);
+                            viewHolder.favoriteButtonNoImage.setVisibility(showFavoriteButtons ? View.VISIBLE : View.GONE);
 
                             return false;
                         }
@@ -274,7 +284,7 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
                     .into(viewHolder.display);
         } else {
             viewHolder.representative.setVisibility(View.GONE);
-            viewHolder.favoriteButtonNoImage.setVisibility(View.VISIBLE);
+            viewHolder.favoriteButtonNoImage.setVisibility(showFavoriteButtons ? View.VISIBLE : View.GONE);
         }
         
         // Update favorite button state
