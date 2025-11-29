@@ -170,6 +170,7 @@
     <string name="invalid_rss">Not a feed</string>
     <string name="rename_feed">Rename</string>
     <string name="feed_name">Feed name</string>
+    <string name="feed_category">Category (optional)</string>
     <string name="feed_warning">Name must be at least one character long.</string>
     <string name="link">Feed link</string>
     <string name="fetching_feed">Fetching</string>

@@ -39,6 +39,7 @@ public class FeedConfigurator extends ActionDialog {
     private final BriefingFeedList list;
     private final Feed feed;
     private EditText name;
+    private EditText category;
 
     public FeedConfigurator(@NonNull ThemedActivity activity, @NonNull Feed feed) {
         super(activity);
@@ -52,9 +53,22 @@ public class FeedConfigurator extends ActionDialog {
         ViewGroup contentView = (ViewGroup) inflater.inflate(R.layout.feed_configurator, null);
 
         name = contentView.findViewById(R.id.name);
+        category = contentView.findViewById(R.id.category);
         View warning = contentView.findViewById(R.id.warning);
 
         name.setText(feed.getTitle());
+        
+        // Hide category field for special feeds (CategoryFeed, UnifiedFeed, FavoritesFeed)
+        if (feed instanceof com.stario.launcher.sheet.briefing.dialog.page.feed.CategoryFeed ||
+            feed instanceof com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed ||
+            feed instanceof com.stario.launcher.sheet.briefing.dialog.page.feed.FavoritesFeed) {
+            category.setVisibility(android.view.View.GONE);
+        } else {
+            if (feed.getCategory() != null) {
+                category.setText(feed.getCategory());
+            }
+        }
+        
         name.addTextChangedListener(new SimpleTextWatcher() {
             @Override
             public void afterTextChanged(@NonNull Editable editable) {
@@ -73,14 +87,46 @@ public class FeedConfigurator extends ActionDialog {
     public void dismiss() {
         super.dismiss();
 
+        android.util.Log.d(TAG, "dismiss() called for feed: " + feed.getTitle());
+        
+        boolean updated = false;
+        
         if (name != null) {
             Editable editable = name.getText();
             String currentTitle = feed.getTitle();
 
             if (editable.length() > 0 &&
                     (currentTitle == null || !currentTitle.equals(editable.toString()))) {
+                android.util.Log.d(TAG, "Updating name from '" + currentTitle + "' to '" + editable.toString() + "'");
                 list.updateName(feed, editable.toString());
+                updated = true;
             }
+        }
+        
+        // Only allow category changes for regular feeds (not special feeds)
+        if (category != null && 
+            !(feed instanceof com.stario.launcher.sheet.briefing.dialog.page.feed.CategoryFeed) &&
+            !(feed instanceof com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed) &&
+            !(feed instanceof com.stario.launcher.sheet.briefing.dialog.page.feed.FavoritesFeed)) {
+            
+            String categoryText = category.getText().toString().trim();
+            String currentCategory = feed.getCategory();
+            
+            android.util.Log.d(TAG, "Category check: categoryText='" + categoryText + "', currentCategory='" + currentCategory + "'");
+            
+            // Update category if it changed (including null to empty or vice versa)
+            if (!categoryText.equals(currentCategory == null ? "" : currentCategory)) {
+                android.util.Log.d(TAG, "Category changed! Calling updateCategory with oldCategory='" + currentCategory + "'");
+                // Save old category BEFORE changing it
+                String oldCategory = currentCategory;
+                feed.setCategory(categoryText.isEmpty() ? null : categoryText);
+                // ALWAYS call updateCategory when category changes, regardless of name update
+                list.updateCategory(feed, oldCategory);
+            } else {
+                android.util.Log.d(TAG, "Category NOT changed, skipping updateCategory");
+            }
+        } else {
+            android.util.Log.d(TAG, "Category field is null or feed is special type, skipping category update");
         }
     }
 

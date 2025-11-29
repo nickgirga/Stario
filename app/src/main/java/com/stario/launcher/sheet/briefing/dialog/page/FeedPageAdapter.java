@@ -134,6 +134,14 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
         return (items == null || System.currentTimeMillis() - lastUpdate > UPDATE_TIME_THRESHOLD)
                 && Utils.isNetworkAvailable(context);
     }
+    
+    /**
+     * Force the adapter to allow updates by resetting the last update time.
+     * This should be called when we know the feed content has changed.
+     */
+    public void forceRefresh() {
+        lastUpdate = -1;
+    }
 
     protected class ViewHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         private final ImageView display;

@@ -84,6 +84,15 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
     public int size() {
         return items.size();
     }
+    
+    /**
+     * Get all feeds including those hidden in categories.
+     * This is used by UnifiedFeed to aggregate all articles.
+     * Returns the actual feed objects from our map to preserve modifications.
+     */
+    public List<Feed> getAllFeeds() {
+        return new ArrayList<>(allFeedObjects.values());
+    }
 
     private void load(String feedsSerial) {
         if (feedsSerial == null) {
@@ -98,11 +107,16 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
 
                 if (feed != null && !items.contains(feed)) {
                     items.add(feed);
+                    // Add to allFeedObjects map
+                    allFeedObjects.put(feed.getRSSLink(), feed);
                     for (FeedListener listener : listeners) {
                         listener.onInserted(size() - 1);
                     }
                 }
             }
+            
+            // After loading all feeds, create category feeds and hide categorized feeds
+            ensureCategoryFeeds();
         } catch (Exception exception) {
             Log.e("BriefingFeedList", "Error loading feeds.", exception);
 
@@ -118,6 +132,8 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         }
 
         items.add(feed);
+        // Add to allFeedObjects map
+        allFeedObjects.put(feed.getRSSLink(), feed);
         serialize();
 
         for (FeedListener listener : listeners) {
@@ -126,6 +142,25 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         
         // Add unified feed if we now have multiple feeds and don't have one yet
         ensureUnifiedFeed();
+        
+        // Update category feeds
+        ensureCategoryFeeds();
+        
+        // Notify CategoryFeed if this feed belongs to a category
+        if (feed.getCategory() != null && !feed.getCategory().isEmpty()) {
+            for (int i = 0; i < items.size(); i++) {
+                Feed item = items.get(i);
+                if (CategoryFeed.isCategoryFeed(item)) {
+                    CategoryFeed categoryFeed = (CategoryFeed) item;
+                    if (feed.getCategory().equals(categoryFeed.getCategoryName())) {
+                        for (FeedListener listener : listeners) {
+                            listener.onUpdated(i);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
 
         return true;
     }
@@ -136,14 +171,21 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         
         boolean hasUnifiedFeed = false;
         int unifiedFeedIndex = -1;
-        int regularFeedsCount = 0;
         
+        // Check if unified feed exists in items
         for (int i = 0; i < items.size(); i++) {
             Feed feed = items.get(i);
             if (UnifiedFeed.isUnifiedFeed(feed)) {
                 hasUnifiedFeed = true;
                 unifiedFeedIndex = i;
-            } else if (!FavoritesFeed.isFavoritesFeed(feed)) {
+                break;
+            }
+        }
+        
+        // Count ALL regular feeds (including hidden ones in categories)
+        int regularFeedsCount = 0;
+        for (Feed feed : allFeedObjects.values()) {
+            if (feed != null) {
                 regularFeedsCount++;
             }
         }
@@ -207,7 +249,16 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
     }
 
     public void updateName(Feed feed, String name) {
-        updateName(items.indexOf(feed), name);
+        int position = items.indexOf(feed);
+        if (position >= 0) {
+            updateName(position, name);
+        } else {
+            // Feed is not in items (hidden in category), update it directly
+            feed.title = name;
+            // Make sure the modified object is in allFeedObjects
+            allFeedObjects.put(feed.getRSSLink(), feed);
+            serialize();
+        }
     }
 
     public void updateName(int position, String name) {
@@ -215,11 +266,126 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
             return;
         }
 
-        items.get(position).title = name;
-        serialize();
+        Feed feed = items.get(position);
+        
+        // Special handling for CategoryFeed - rename the category for all child feeds
+        if (CategoryFeed.isCategoryFeed(feed)) {
+            CategoryFeed categoryFeed = (CategoryFeed) feed;
+            String oldCategoryName = categoryFeed.getCategoryName();
+            
+            // Update the category name for all feeds that belong to this category
+            for (Feed childFeed : allFeedObjects.values()) {
+                if (childFeed != null && oldCategoryName.equals(childFeed.getCategory())) {
+                    childFeed.setCategory(name);
+                }
+            }
+            
+            // Update the CategoryFeed's title
+            categoryFeed.title = name;
+            serialize();
+            
+            // Refresh category feeds to reflect the new category name
+            ensureCategoryFeeds();
+        } else {
+            // Regular feed name update
+            feed.title = name;
+            serialize();
+        }
 
         for (FeedListener listener : listeners) {
             listener.onUpdated(position);
+        }
+    }
+    
+    public void updateCategory(Feed feed) {
+        updateCategory(feed, null);
+    }
+    
+    public void updateCategory(Feed feed, String oldCategory) {
+        int position = items.indexOf(feed);
+        if (position >= 0) {
+            updateCategory(position, oldCategory);
+        } else {
+            // Feed is not in items (hidden in category)
+            // The feed object has already been modified by FeedConfigurator
+            // We need to update it in allFeedObjects and serialize
+            
+            Log.d("BriefingFeedList", "updateCategory: feed=" + feed.getTitle() + 
+                  ", oldCategory=" + oldCategory + ", newCategory=" + feed.getCategory());
+            
+            // Make sure the modified object is in allFeedObjects
+            allFeedObjects.put(feed.getRSSLink(), feed);
+            serialize();
+            
+            // Refresh everything when a feed's category changes
+            ensureUnifiedFeed();
+            ensureCategoryFeeds();
+            
+            // Find and notify affected CategoryFeeds and UnifiedFeed
+            String newCategory = feed.getCategory();
+            for (int i = 0; i < items.size(); i++) {
+                Feed item = items.get(i);
+                // Notify UnifiedFeed, old CategoryFeed, and new CategoryFeed
+                if (UnifiedFeed.isUnifiedFeed(item)) {
+                    Log.d("BriefingFeedList", "Notifying UnifiedFeed at position " + i);
+                    for (FeedListener listener : listeners) {
+                        listener.onUpdated(i);
+                    }
+                } else if (CategoryFeed.isCategoryFeed(item)) {
+                    CategoryFeed categoryFeed = (CategoryFeed) item;
+                    String catName = categoryFeed.getCategoryName();
+                    // Notify if this is the old category OR the new category
+                    // Also notify if old category was null/empty (feed was uncategorized)
+                    // or if new category is null/empty (feed is being uncategorized)
+                    boolean isOldCategory = (oldCategory != null && !oldCategory.isEmpty() && catName.equals(oldCategory));
+                    boolean isNewCategory = (newCategory != null && !newCategory.isEmpty() && catName.equals(newCategory));
+                    
+                    if (isOldCategory || isNewCategory) {
+                        Log.d("BriefingFeedList", "Notifying CategoryFeed '" + catName + "' at position " + i);
+                        for (FeedListener listener : listeners) {
+                            listener.onUpdated(i);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    public void updateCategory(int position, String oldCategory) {
+        if (position < 0 || position >= items.size()) {
+            return;
+        }
+        
+        Feed feed = items.get(position);
+        
+        serialize();
+        
+        // Refresh everything when a feed's category changes
+        ensureUnifiedFeed();
+        ensureCategoryFeeds();
+
+        // Find and notify affected CategoryFeeds and UnifiedFeed
+        String newCategory = feed.getCategory();
+        for (int i = 0; i < items.size(); i++) {
+            Feed item = items.get(i);
+            // Notify UnifiedFeed, old CategoryFeed, and new CategoryFeed
+            if (UnifiedFeed.isUnifiedFeed(item)) {
+                for (FeedListener listener : listeners) {
+                    listener.onUpdated(i);
+                }
+            } else if (CategoryFeed.isCategoryFeed(item)) {
+                CategoryFeed categoryFeed = (CategoryFeed) item;
+                String catName = categoryFeed.getCategoryName();
+                // Notify if this is the old category OR the new category
+                boolean isOldCategory = (oldCategory != null && !oldCategory.isEmpty() && catName.equals(oldCategory));
+                boolean isNewCategory = (newCategory != null && !newCategory.isEmpty() && catName.equals(newCategory));
+                
+                if (isOldCategory || isNewCategory) {
+                    for (FeedListener listener : listeners) {
+                        listener.onUpdated(i);
+                    }
+                }
+            }
         }
     }
 
@@ -234,7 +400,9 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         
         // Prevent removal of special feeds directly
         Feed feed = items.get(position);
-        if (UnifiedFeed.isUnifiedFeed(feed) || FavoritesFeed.isFavoritesFeed(feed)) {
+        if (UnifiedFeed.isUnifiedFeed(feed) || 
+            FavoritesFeed.isFavoritesFeed(feed) ||
+            CategoryFeed.isCategoryFeed(feed)) {
             return;
         }
 
@@ -247,15 +415,86 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         
         // Update special feeds status
         ensureUnifiedFeed();
+        ensureCategoryFeeds();
+    }
+    
+    /**
+     * Remove a feed from storage by its Feed object.
+     * This works for both visible and hidden (categorized) feeds.
+     */
+    public void removeFeedFromStorage(Feed feed) {
+        if (feed == null || 
+            UnifiedFeed.isUnifiedFeed(feed) || 
+            FavoritesFeed.isFavoritesFeed(feed) ||
+            CategoryFeed.isCategoryFeed(feed)) {
+            return;
+        }
+        
+        // Save the category before removing
+        String category = feed.getCategory();
+        
+        // Remove from visible items if present
+        int visibleIndex = items.indexOf(feed);
+        if (visibleIndex >= 0) {
+            items.remove(visibleIndex);
+        }
+        
+        // Remove from allFeedObjects map
+        allFeedObjects.remove(feed.getRSSLink());
+        
+        // Serialize to update storage
+        serialize();
+        
+        // Notify listeners if it was visible
+        if (visibleIndex >= 0) {
+            for (FeedListener listener : listeners) {
+                listener.onRemoved(visibleIndex);
+            }
+        }
+        
+        // Update special feeds status
+        ensureUnifiedFeed();
+        ensureCategoryFeeds();
+        
+        // Notify affected CategoryFeed and UnifiedFeed to refresh their articles
+        for (int i = 0; i < items.size(); i++) {
+            Feed item = items.get(i);
+            if (UnifiedFeed.isUnifiedFeed(item)) {
+                Log.d("BriefingFeedList", "Notifying UnifiedFeed after feed removal at position " + i);
+                for (FeedListener listener : listeners) {
+                    listener.onUpdated(i);
+                }
+            } else if (CategoryFeed.isCategoryFeed(item)) {
+                CategoryFeed categoryFeed = (CategoryFeed) item;
+                if (category != null && !category.isEmpty() && categoryFeed.getCategoryName().equals(category)) {
+                    Log.d("BriefingFeedList", "Notifying CategoryFeed '" + category + "' after feed removal at position " + i);
+                    for (FeedListener listener : listeners) {
+                        listener.onUpdated(i);
+                    }
+                }
+            }
+        }
     }
 
+    // Keep track of all feed objects (visible and hidden) to preserve modifications
+    private final java.util.Map<String, Feed> allFeedObjects = new java.util.HashMap<>();
+    
     @SuppressLint("ApplySharedPref")
     private void serialize() {
-        ArrayList<String> serials = new ArrayList<>();
+        // Update allFeedObjects with current items
         for (Feed item : items) {
-            // Don't serialize special feeds (unified and favorites)
-            if (!UnifiedFeed.isUnifiedFeed(item) && !FavoritesFeed.isFavoritesFeed(item)) {
-                serials.add(item.serialize());
+            if (!UnifiedFeed.isUnifiedFeed(item) && 
+                !FavoritesFeed.isFavoritesFeed(item) &&
+                !CategoryFeed.isCategoryFeed(item)) {
+                allFeedObjects.put(item.getRSSLink(), item);
+            }
+        }
+        
+        // Serialize all feeds from our object map
+        ArrayList<String> serials = new ArrayList<>();
+        for (Feed feed : allFeedObjects.values()) {
+            if (feed != null) {
+                serials.add(feed.serialize());
             }
         }
 
@@ -275,6 +514,169 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         }
     }
     
+    private void ensureCategoryFeeds() {
+        // Get all feeds from storage to count categories properly
+        List<Feed> allFeeds = getAllFeeds();
+        
+        // Find all unique categories and count feeds per category
+        List<String> categories = new ArrayList<>();
+        for (Feed feed : allFeeds) {
+            if (feed != null && 
+                feed.getCategory() != null && 
+                !feed.getCategory().isEmpty()) {
+                
+                if (!categories.contains(feed.getCategory())) {
+                    categories.add(feed.getCategory());
+                }
+            }
+        }
+        
+        // Determine which categories should have category feeds (1+ feeds)
+        List<String> categoriesToShow = new ArrayList<>();
+        for (String category : categories) {
+            int feedsInCategory = 0;
+            for (Feed feed : allFeeds) {
+                if (category.equals(feed.getCategory())) {
+                    feedsInCategory++;
+                }
+            }
+            
+            if (feedsInCategory >= 1) {
+                categoriesToShow.add(category);
+            }
+        }
+        
+        // Remove category feeds that no longer have enough feeds
+        List<Integer> toRemove = new ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            Feed feed = items.get(i);
+            if (CategoryFeed.isCategoryFeed(feed)) {
+                CategoryFeed categoryFeed = (CategoryFeed) feed;
+                if (!categoriesToShow.contains(categoryFeed.getCategoryName())) {
+                    toRemove.add(i);
+                }
+            }
+        }
+        
+        // Remove in reverse order to maintain indices
+        for (int i = toRemove.size() - 1; i >= 0; i--) {
+            int index = toRemove.get(i);
+            items.remove(index);
+            for (FeedListener listener : listeners) {
+                listener.onRemoved(index);
+            }
+        }
+        
+        // Hide individual feeds that belong to categories with category feeds
+        toRemove.clear();
+        for (int i = 0; i < items.size(); i++) {
+            Feed feed = items.get(i);
+            if (feed != null &&
+                feed.getCategory() != null &&
+                !feed.getCategory().isEmpty() &&
+                categoriesToShow.contains(feed.getCategory()) &&
+                !(feed instanceof UnifiedFeed) &&
+                !(feed instanceof FavoritesFeed) &&
+                !(feed instanceof CategoryFeed)) {
+                toRemove.add(i);
+            }
+        }
+        
+        // Remove categorized feeds in reverse order
+        for (int i = toRemove.size() - 1; i >= 0; i--) {
+            int index = toRemove.get(i);
+            items.remove(index);
+            for (FeedListener listener : listeners) {
+                listener.onRemoved(index);
+            }
+        }
+        
+        // First, remove any duplicate CategoryFeeds (safety check)
+        java.util.Set<String> seenCategories = new java.util.HashSet<>();
+        toRemove.clear();
+        for (int i = 0; i < items.size(); i++) {
+            Feed feed = items.get(i);
+            if (CategoryFeed.isCategoryFeed(feed)) {
+                CategoryFeed categoryFeed = (CategoryFeed) feed;
+                String catName = categoryFeed.getCategoryName();
+                if (seenCategories.contains(catName)) {
+                    // Duplicate CategoryFeed - remove it
+                    toRemove.add(i);
+                } else {
+                    seenCategories.add(catName);
+                }
+            }
+        }
+        
+        // Remove duplicates in reverse order
+        for (int i = toRemove.size() - 1; i >= 0; i--) {
+            int index = toRemove.get(i);
+            items.remove(index);
+            for (FeedListener listener : listeners) {
+                listener.onRemoved(index);
+            }
+        }
+        
+        // Add category feeds for categories that don't have one yet
+        for (String category : categoriesToShow) {
+            boolean hasCategoryFeed = false;
+            for (Feed feed : items) {
+                if (CategoryFeed.isCategoryFeed(feed)) {
+                    CategoryFeed categoryFeed = (CategoryFeed) feed;
+                    if (category.equals(categoryFeed.getCategoryName())) {
+                        hasCategoryFeed = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (!hasCategoryFeed) {
+                // Insert category feed after special feeds (unified, favorites)
+                int insertPosition = 0;
+                for (int i = 0; i < items.size(); i++) {
+                    if (UnifiedFeed.isUnifiedFeed(items.get(i)) || 
+                        FavoritesFeed.isFavoritesFeed(items.get(i))) {
+                        insertPosition = i + 1;
+                    } else {
+                        break;
+                    }
+                }
+                
+                items.add(insertPosition, new CategoryFeed(category));
+                for (FeedListener listener : listeners) {
+                    listener.onInserted(insertPosition);
+                }
+            }
+        }
+        
+        // Show feeds that should be visible (no category or category not in categoriesToShow)
+        for (Feed feed : allFeedObjects.values()) {
+            if (feed != null &&
+                !(feed instanceof UnifiedFeed) &&
+                !(feed instanceof FavoritesFeed) &&
+                !(feed instanceof CategoryFeed)) {
+                
+                boolean shouldBeVisible = feed.getCategory() == null || 
+                                         feed.getCategory().isEmpty() || 
+                                         !categoriesToShow.contains(feed.getCategory());
+                
+                boolean isVisible = items.contains(feed);
+                
+                if (shouldBeVisible && !isVisible) {
+                    // Feed should be visible but isn't - add it
+                    items.add(feed);
+                    for (FeedListener listener : listeners) {
+                        listener.onInserted(items.size() - 1);
+                    }
+                }
+            }
+        }
+        
+        // Always refresh unified feed after category changes
+        // This ensures "All Feeds" appears/disappears correctly
+        ensureUnifiedFeed();
+    }
+    
     /**
      * Refresh feeds based on current preference settings.
      * This should be called when preferences change.
@@ -282,6 +684,7 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
     public void refreshFeeds() {
         ensureUnifiedFeed();
         ensureFavoritesFeed();
+        ensureCategoryFeeds();
     }
     
     @Override

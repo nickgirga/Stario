@@ -37,6 +37,7 @@ import com.stario.launcher.R;
 import com.stario.launcher.sheet.SheetType;
 import com.stario.launcher.sheet.briefing.dialog.BriefingDialog;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.BriefingFeedList;
+import com.stario.launcher.sheet.briefing.dialog.page.feed.CategoryFeed;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.FavoritesFeed;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.Feed;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed;
@@ -269,6 +270,14 @@ public class FeedPage extends Fragment implements ArticleStateManager.StateChang
     }
 
     public void update() {
+        update(false);
+    }
+    
+    /**
+     * Update the feed page.
+     * @param force If true, bypasses the cache and forces a refresh
+     */
+    public void update(boolean force) {
         if (runningTask != null && !runningTask.isDone()) {
             swipeRefreshLayout.setRefreshing(false);
 
@@ -281,6 +290,11 @@ public class FeedPage extends Fragment implements ArticleStateManager.StateChang
             showErrorState();
 
             return;
+        }
+        
+        // Force refresh if requested
+        if (force) {
+            adapter.forceRefresh();
         }
 
         if (!adapter.shouldUpdate()) {
@@ -327,6 +341,9 @@ public class FeedPage extends Fragment implements ArticleStateManager.StateChang
                 items = UnifiedFeed.fetchUnifiedArticles(taskFeedList);
             } else if (FavoritesFeed.isFavoritesFeed(feed)) {
                 items = FavoritesFeed.fetchFavoriteArticles(stateManager);
+            } else if (CategoryFeed.isCategoryFeed(feed)) {
+                CategoryFeed categoryFeed = (CategoryFeed) feed;
+                items = CategoryFeed.fetchCategoryArticles(taskFeedList, categoryFeed.getCategoryName());
             } else {
                 items = RSSHelper.parse(feed.getRSSLink());
             }

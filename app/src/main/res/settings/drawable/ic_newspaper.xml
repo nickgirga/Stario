@@ -1,0 +1,26 @@
+<!--
+  ~ Copyright (C) 2025 Nicholas Girga
+  ~
+  ~ This program is free software: you can redistribute it and/or modify
+  ~ it under the terms of the GNU General Public License as published by
+  ~ the Free Software Foundation, either version 3 of the License, or
+  ~ (at your option) any later version.
+  ~
+  ~ This program is distributed in the hope that it will be useful,
+  ~ but WITHOUT ANY WARRANTY; without even the implied warranty of
+  ~ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+  ~ GNU General Public License for more details.
+  ~
+  ~ You should have received a copy of the GNU General Public License
+  ~ along with this program. If not, see <http://www.gnu.org/licenses/>
+  -->
+
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="960"
+    android:viewportHeight="960">
+  <path
+      android:pathData="M160,840q-33,0 -56.5,-23.5T80,760v-560q0,-33 23.5,-56.5T160,120h560q33,0 56.5,23.5T800,200v80h80q33,0 56.5,23.5T960,360v400q0,33 -23.5,56.5T880,840L160,840ZM160,760h560v-560L160,200v560ZM240,680h320v-80L240,600v80ZM240,520h320v-80L240,440v80ZM240,360h480v-80L240,280v80ZM800,760h80v-400h-80v400Z"
+      android:fillColor="?attr/colorOnSurface"/>
+</vector>

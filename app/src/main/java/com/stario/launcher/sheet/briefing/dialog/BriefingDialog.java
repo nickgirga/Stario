@@ -41,6 +41,7 @@ import com.stario.launcher.sheet.briefing.configurator.BriefingConfigurator;
 import com.stario.launcher.sheet.briefing.configurator.FeedConfigurator;
 import com.stario.launcher.sheet.briefing.dialog.page.FeedPage;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.BriefingFeedList;
+import com.stario.launcher.sheet.briefing.dialog.page.feed.CategoryFeed;
 import com.stario.launcher.sheet.briefing.dialog.page.feed.Feed;
 import com.stario.launcher.themes.ThemedActivity;
 import com.stario.launcher.ui.Measurements;
@@ -147,6 +148,18 @@ public class BriefingDialog extends SheetDialogFragment {
 
             @Override
             public void onUpdated(int index) {
+                android.util.Log.d("BriefingDialog", "onUpdated called for index: " + index);
+                
+                // Refresh the specific feed page that was updated
+                FeedPage page = adapter.getRegisteredFragment(index);
+                if (page != null) {
+                    android.util.Log.d("BriefingDialog", "Calling update(true) on FeedPage at index " + index);
+                    // Force refresh to bypass cache
+                    page.update(true);
+                } else {
+                    android.util.Log.d("BriefingDialog", "FeedPage is null at index " + index);
+                }
+                
                 notifyUpdate();
             }
         };
@@ -199,16 +212,89 @@ public class BriefingDialog extends SheetDialogFragment {
             Resources resources = activity.getResources();
 
             PopupMenu menu = new PopupMenu(activity);
-
-            menu.add(new PopupMenu.Item(resources.getString(R.string.remove),
-                    ResourcesCompat.getDrawable(resources, R.drawable.ic_delete, activity.getTheme()),
-                    view -> list.remove(position)));
-
             Feed feed = list.get(position);
-            if (feed != null) {
+
+            // For CategoryFeed, add "Manage Feeds" option to show feeds in the category
+            if (feed instanceof CategoryFeed) {
+                CategoryFeed categoryFeed = (CategoryFeed) feed;
+                String categoryName = categoryFeed.getCategoryName();
+                
+                menu.add(new PopupMenu.Item("Manage Feeds",
+                        ResourcesCompat.getDrawable(resources, R.drawable.ic_edit, activity.getTheme()),
+                        view -> {
+                            // Use postDelayed to ensure the first popup has fully closed
+                            tab.postDelayed(() -> {
+                                // Show submenu with all feeds in this category
+                                PopupMenu feedsMenu = new PopupMenu(activity);
+                                
+                                // Get all feeds from storage (including hidden ones)
+                                java.util.List<Feed> allFeeds = list.getAllFeeds();
+                                for (Feed categoryMemberFeed : allFeeds) {
+                                    if (categoryMemberFeed != null && 
+                                        categoryName.equals(categoryMemberFeed.getCategory())) {
+                                        
+                                        feedsMenu.add(new PopupMenu.Item(categoryMemberFeed.getTitle(),
+                                                ResourcesCompat.getDrawable(resources, R.drawable.ic_newspaper, activity.getTheme()),
+                                                feedView -> {
+                                                    // Post the submenu show to avoid window token issues
+                                                    tab.postDelayed(() -> {
+                                                        // Show submenu for this specific feed
+                                                        PopupMenu feedActionMenu = new PopupMenu(activity);
+                                                        
+                                                        feedActionMenu.add(new PopupMenu.Item("Edit Feed",
+                                                                ResourcesCompat.getDrawable(resources, R.drawable.ic_edit, activity.getTheme()),
+                                                                actionView -> new FeedConfigurator(activity, categoryMemberFeed).show()));
+                                                        
+                                                        feedActionMenu.add(new PopupMenu.Item(resources.getString(R.string.remove),
+                                                                ResourcesCompat.getDrawable(resources, R.drawable.ic_delete, activity.getTheme()),
+                                                                actionView -> list.removeFeedFromStorage(categoryMemberFeed)));
+                                                        
+                                                        feedActionMenu.show(activity, tab, PopupMenu.PIVOT_CENTER_HORIZONTAL);
+                                                    }, 100);
+                                                }));
+                                    }
+                                }
+                                
+                                feedsMenu.show(activity, tab, PopupMenu.PIVOT_CENTER_HORIZONTAL);
+                            }, 100);
+                        }));
+                
                 menu.add(new PopupMenu.Item(resources.getString(R.string.rename_feed),
                         ResourcesCompat.getDrawable(resources, R.drawable.ic_edit, activity.getTheme()),
                         view -> new FeedConfigurator(activity, feed).show()));
+            } else {
+                // Regular feed menu
+                menu.add(new PopupMenu.Item(resources.getString(R.string.remove),
+                        ResourcesCompat.getDrawable(resources, R.drawable.ic_delete, activity.getTheme()),
+                        view -> {
+                            // For UnifiedFeed and FavoritesFeed, disable via settings instead of removing
+                            if (com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed.isUnifiedFeed(feed)) {
+                                activity.getApplicationContext()
+                                        .getSharedPreferences(com.stario.launcher.preferences.Entry.BRIEFING)
+                                        .edit()
+                                        .putBoolean(com.stario.launcher.activities.settings.Settings.UNIFIED_FEED_ENABLED, false)
+                                        .apply();
+                                list.refreshFeeds();
+                            } else if (com.stario.launcher.sheet.briefing.dialog.page.feed.FavoritesFeed.isFavoritesFeed(feed)) {
+                                activity.getApplicationContext()
+                                        .getSharedPreferences(com.stario.launcher.preferences.Entry.BRIEFING)
+                                        .edit()
+                                        .putBoolean(com.stario.launcher.activities.settings.Settings.FAVORITES_FEED_ENABLED, false)
+                                        .apply();
+                                list.refreshFeeds();
+                            } else {
+                                // Regular feed - remove normally
+                                list.remove(position);
+                            }
+                        }));
+
+                if (feed != null && 
+                    !com.stario.launcher.sheet.briefing.dialog.page.feed.UnifiedFeed.isUnifiedFeed(feed) &&
+                    !com.stario.launcher.sheet.briefing.dialog.page.feed.FavoritesFeed.isFavoritesFeed(feed)) {
+                    menu.add(new PopupMenu.Item(resources.getString(R.string.rename_feed),
+                            ResourcesCompat.getDrawable(resources, R.drawable.ic_edit, activity.getTheme()),
+                            view -> new FeedConfigurator(activity, feed).show()));
+                }
             }
 
             menu.show(activity, tab, PopupMenu.PIVOT_CENTER_HORIZONTAL);

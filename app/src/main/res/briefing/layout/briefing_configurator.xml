@@ -92,6 +92,26 @@
             app:layout_constraintBottom_toTopOf="@+id/plenary"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <com.stario.launcher.ui.keyboard.extract.ExtractEditText
+            android:id="@+id/category"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/searchbar_background"
+            android:fontFamily="@font/dm_sans_regular"
+            android:gravity="start|center_vertical"
+            android:hint="@string/feed_category"
+            android:imeOptions="actionNext"
+            android:lines="1"
+            android:maxLines="1"
+            android:paddingStart="20dp"
+            android:paddingTop="15dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="15dp"
+            android:singleLine="true"
+            android:textColor="?attr/colorOnPrimaryContainer"
+            android:textSize="18sp" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

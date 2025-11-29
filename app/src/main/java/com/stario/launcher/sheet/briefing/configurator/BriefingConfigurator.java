@@ -78,6 +78,7 @@ public class BriefingConfigurator extends ActionDialog {
     private PulsingTextView limit;
     private LinearLayout preview;
     private TextView title;
+    private EditText category;
     private EditText query;
 
     public BriefingConfigurator(@NonNull ThemedActivity activity) {
@@ -91,6 +92,7 @@ public class BriefingConfigurator extends ActionDialog {
         contentView = (ViewGroup) inflater.inflate(R.layout.briefing_configurator, null);
 
         query = contentView.findViewById(R.id.query);
+        category = contentView.findViewById(R.id.category);
         preview = contentView.findViewById(R.id.preview);
         title = contentView.findViewById(R.id.title);
         limit = contentView.findViewById(R.id.limit);
@@ -159,6 +161,12 @@ public class BriefingConfigurator extends ActionDialog {
 
             if (validatedFeed != null && validatedFeed.getTitle() != null &&
                     !validatedFeed.getTitle().isEmpty()) {
+                // Set category if provided
+                String categoryText = category.getText().toString().trim();
+                if (!categoryText.isEmpty()) {
+                    validatedFeed.setCategory(categoryText);
+                }
+                
                 boolean added = list.add(validatedFeed);
 
                 if (added) {

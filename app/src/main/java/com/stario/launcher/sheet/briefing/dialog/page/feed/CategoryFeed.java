@@ -34,24 +34,29 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 /**
- * Represents a unified feed that aggregates articles from multiple RSS feeds.
- * Implements Issue #1: Unified "briefing" feed.
+ * Represents a category feed that aggregates articles from multiple RSS feeds
+ * that belong to the same category.
  */
-public class UnifiedFeed extends Feed {
-    private static final String TAG = "UnifiedFeed";
-    private static final String UNIFIED_FEED_TITLE = "All Feeds";
-    private static final String UNIFIED_FEED_RSS = "unified://all";
+public class CategoryFeed extends Feed {
+    private static final String TAG = "CategoryFeed";
+    private static final String CATEGORY_FEED_PREFIX = "category://";
 
-    public UnifiedFeed() {
-        super(UNIFIED_FEED_TITLE, UNIFIED_FEED_RSS);
+    private final String categoryName;
+
+    public CategoryFeed(String categoryName) {
+        super(categoryName, CATEGORY_FEED_PREFIX + categoryName, categoryName, false);
+        this.categoryName = categoryName;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
     }
 
     /**
-     * Fetches and aggregates articles from all feeds in the provided list.
+     * Fetches and aggregates articles from all feeds in the specified category.
      * Articles are sorted by publication date (newest first).
-     * This includes ALL feeds, even those hidden in categories.
      */
-    public static List<RssItem> fetchUnifiedArticles(BriefingFeedList feedList) {
+    public static List<RssItem> fetchCategoryArticles(BriefingFeedList feedList, String category) {
         List<RssItem> allArticles = new ArrayList<>();
         List<CompletableFuture<List<RssItem>>> futures = new ArrayList<>();
 
@@ -59,9 +64,9 @@ public class UnifiedFeed extends Feed {
         List<Feed> allFeeds = feedList.getAllFeeds();
         
         for (Feed feed : allFeeds) {
-            // Only include feeds that are marked for inclusion in unified view
-            // and are not special feeds themselves
-            if (feed != null && feed.isIncludedInUnified() && 
+            // Only include feeds that match this category and are not special feeds
+            if (feed != null && 
+                category.equals(feed.getCategory()) && 
                 !(feed instanceof UnifiedFeed) &&
                 !(feed instanceof FavoritesFeed) &&
                 !(feed instanceof CategoryFeed)) {
@@ -135,16 +140,17 @@ public class UnifiedFeed extends Feed {
     }
 
     /**
-     * Checks if this is the unified feed.
+     * Checks if this is a category feed.
      */
-    public static boolean isUnifiedFeed(Feed feed) {
-        return feed instanceof UnifiedFeed || 
-               (feed != null && UNIFIED_FEED_RSS.equals(feed.getRSSLink()));
+    public static boolean isCategoryFeed(Feed feed) {
+        return feed instanceof CategoryFeed || 
+               (feed != null && feed.getRSSLink() != null && 
+                feed.getRSSLink().startsWith(CATEGORY_FEED_PREFIX));
     }
 
     @Override
     public boolean isIncludedInUnified() {
-        // The unified feed itself should not be included in its own aggregation
+        // Category feeds should not be included in the unified feed
         return false;
     }
 }
