@@ -238,12 +238,23 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
             for (FeedListener listener : listeners) {
                 listener.onInserted(insertPosition);
             }
+            
+            // Trigger an update to refresh the feed's content immediately after insertion
+            for (FeedListener listener : listeners) {
+                listener.onUpdated(insertPosition);
+            }
         } 
         // Remove favorites feed if disabled or there are no favorites
         else if (hasFavoritesFeed && (!favoritesFeedEnabled || !hasFavorites)) {
             items.remove(favoritesIndex);
             for (FeedListener listener : listeners) {
                 listener.onRemoved(favoritesIndex);
+            }
+        }
+        // If favorites feed already exists, trigger an update to refresh its content
+        else if (hasFavoritesFeed && favoritesFeedEnabled && hasFavorites) {
+            for (FeedListener listener : listeners) {
+                listener.onUpdated(favoritesIndex);
             }
         }
     }
@@ -416,6 +427,71 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
         // Update special feeds status
         ensureUnifiedFeed();
         ensureCategoryFeeds();
+    }
+    
+    /**
+     * Remove all feeds in a category and the category itself.
+     * This recursively removes all child feeds from storage.
+     */
+    public void removeCategory(String categoryName) {
+        if (categoryName == null || categoryName.isEmpty()) {
+            return;
+        }
+        
+        // Collect all feeds that belong to this category
+        java.util.List<Feed> feedsToRemove = new java.util.ArrayList<>();
+        for (Feed feed : allFeedObjects.values()) {
+            if (feed != null && categoryName.equals(feed.getCategory())) {
+                feedsToRemove.add(feed);
+            }
+        }
+        
+        // Remove all feeds in the category
+        for (Feed feed : feedsToRemove) {
+            allFeedObjects.remove(feed.getRSSLink());
+        }
+        
+        // Remove the CategoryFeed from visible items
+        int categoryFeedIndex = -1;
+        for (int i = 0; i < items.size(); i++) {
+            Feed feed = items.get(i);
+            if (CategoryFeed.isCategoryFeed(feed)) {
+                CategoryFeed categoryFeed = (CategoryFeed) feed;
+                if (categoryName.equals(categoryFeed.getCategoryName())) {
+                    categoryFeedIndex = i;
+                    break;
+                }
+            }
+        }
+        
+        if (categoryFeedIndex >= 0) {
+            items.remove(categoryFeedIndex);
+        }
+        
+        // Serialize to update storage
+        serialize();
+        
+        // Notify listeners if the category feed was visible
+        if (categoryFeedIndex >= 0) {
+            for (FeedListener listener : listeners) {
+                listener.onRemoved(categoryFeedIndex);
+            }
+        }
+        
+        // Update special feeds status
+        ensureUnifiedFeed();
+        ensureCategoryFeeds();
+        
+        // Notify UnifiedFeed to refresh
+        for (int i = 0; i < items.size(); i++) {
+            Feed item = items.get(i);
+            if (UnifiedFeed.isUnifiedFeed(item)) {
+                for (FeedListener listener : listeners) {
+                    listener.onUpdated(i);
+                }
+                break;
+            }
+        }
     }
     
     /**
@@ -690,7 +766,10 @@ public class BriefingFeedList implements ArticleStateManager.StateChangeListener
     @Override
     public void onStateChanged() {
         // Update favorites feed when favorites change
-        ensureFavoritesFeed();
+        // Post to handler to avoid UI conflicts when triggered during button clicks
+        new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+            ensureFavoritesFeed();
+        });
     }
 
     public interface FeedListener {

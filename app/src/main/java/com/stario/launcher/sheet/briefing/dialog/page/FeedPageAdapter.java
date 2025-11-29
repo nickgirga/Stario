@@ -152,6 +152,7 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
         private final TextView category;
         private final ImageView favoriteButton;
         private final ImageView favoriteButtonNoImage;
+        private RssItem currentItem;
 
         public ViewHolder(View itemView) {
             super(itemView);
@@ -177,19 +178,21 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
             
             // Set up favorite button click listeners
             View.OnClickListener favoriteClickListener = v -> {
-                int index = getBindingAdapterPosition();
-                if (index == RecyclerView.NO_POSITION || stateManager == null) {
+                if (currentItem == null || stateManager == null) {
                     return;
                 }
                 
-                RssItem item = items.get(index);
                 Vibrations.getInstance().vibrate();
-                stateManager.toggleFavorite(item, feedTitle != null ? feedTitle : "");
-                updateFavoriteButton(item);
+                stateManager.toggleFavorite(currentItem, feedTitle != null ? feedTitle : "");
+                updateFavoriteButton(currentItem);
             };
             
             favoriteButton.setOnClickListener(favoriteClickListener);
             favoriteButtonNoImage.setOnClickListener(favoriteClickListener);
+        }
+        
+        public void bind(RssItem item) {
+            this.currentItem = item;
         }
         
         private void updateFavoriteButton(RssItem item) {
@@ -206,26 +209,24 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
 
         @Override
         public void onClick(View view) {
-            int index = getBindingAdapterPosition();
-            if (index == RecyclerView.NO_POSITION) {
+            if (currentItem == null) {
                 return;
             }
 
-            RssItem item = items.get(index);
             Vibrations.getInstance().vibrate();
 
             // Mark article as read when clicked
             if (stateManager != null) {
-                stateManager.markAsRead(item);
+                stateManager.markAsRead(currentItem);
             }
 
             Intent intent = null;
-            if (item.getLink() != null) {
+            if (currentItem.getLink() != null) {
                 intent = new Intent(new Intent(Intent.ACTION_VIEW,
-                        Uri.parse(item.getLink())));
-            } else if (item.getGuid() != null) {
+                        Uri.parse(currentItem.getLink())));
+            } else if (currentItem.getGuid() != null) {
                 intent = new Intent(new Intent(Intent.ACTION_VIEW,
-                        Uri.parse(item.getGuid())));
+                        Uri.parse(currentItem.getGuid())));
             }
 
             if (intent != null) {
@@ -238,6 +239,9 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
     @Override
     public void onBindViewHolder(@NonNull ViewHolder viewHolder, int position) {
         RssItem item = items.get(position);
+        
+        // Bind the item to the ViewHolder so it has a reference to the correct article
+        viewHolder.bind(item);
 
         viewHolder.title.setVisibility(View.GONE);
         viewHolder.author.setVisibility(View.GONE);

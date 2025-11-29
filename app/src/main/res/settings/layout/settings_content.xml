@@ -596,21 +596,6 @@
         android:transitionGroup="true"
         app:carbon_cornerRadius="20dp">
 
-        <carbon.widget.TextView
-            android:id="@+id/favorites"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@drawable/ripple"
-            android:drawableStart="@drawable/ic_favorite"
-            android:drawablePadding="10dp"
-            android:fontFamily="@font/dm_sans_medium"
-            android:letterSpacing="-0.03"
-            android:padding="15dp"
-            android:text="@string/favorites"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="20sp"
-            app:carbon_cornerRadius="5dp" />
-
         <carbon.widget.RelativeLayout
             android:id="@+id/unified_feed_container"
             android:layout_width="match_parent"
@@ -685,6 +670,21 @@
                 android:textSize="20sp" />
 
         </carbon.widget.RelativeLayout>
+
+        <carbon.widget.TextView
+            android:id="@+id/favorites"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/ripple"
+            android:drawableStart="@drawable/ic_favorite"
+            android:drawablePadding="10dp"
+            android:fontFamily="@font/dm_sans_medium"
+            android:letterSpacing="-0.03"
+            android:padding="15dp"
+            android:text="@string/favorites"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="20sp"
+            app:carbon_cornerRadius="5dp" />
 
     </carbon.widget.LinearLayout>
 

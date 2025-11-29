@@ -262,6 +262,10 @@ public class BriefingDialog extends SheetDialogFragment {
                 menu.add(new PopupMenu.Item(resources.getString(R.string.rename_feed),
                         ResourcesCompat.getDrawable(resources, R.drawable.ic_edit, activity.getTheme()),
                         view -> new FeedConfigurator(activity, feed).show()));
+                
+                menu.add(new PopupMenu.Item(resources.getString(R.string.remove),
+                        ResourcesCompat.getDrawable(resources, R.drawable.ic_delete, activity.getTheme()),
+                        view -> list.removeCategory(categoryName)));
             } else {
                 // Regular feed menu
                 menu.add(new PopupMenu.Item(resources.getString(R.string.remove),
