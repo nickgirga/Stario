@@ -225,8 +225,47 @@ public class FeedPage extends Fragment implements ArticleStateManager.StateChang
         // Refresh the favorites feed when favorites change
         Feed feed = BriefingFeedList.getInstance().get(position);
         if (FavoritesFeed.isFavoritesFeed(feed)) {
-            UiUtils.post(this::update);
+            // Update favorites immediately without showing loading UI or scrolling
+            UiUtils.post(this::updateFavoritesQuietly);
         }
+    }
+    
+    /**
+     * Updates the favorites feed quietly without showing loading UI or scrolling to top.
+     * This maintains the user's scroll position and provides immediate feedback.
+     */
+    private void updateFavoritesQuietly() {
+        if (stateManager == null || adapter == null) {
+            return;
+        }
+        
+        // Fetch favorites directly
+        List<RssItem> items = FavoritesFeed.fetchFavoriteArticles(stateManager);
+        
+        if (items != null) {
+            adapter.update(items);
+            
+            // Show/hide empty state without animations
+            if (adapter.getItemCount() == 0) {
+                exceptionView.setVisibility(View.VISIBLE);
+                fetchingView.setVisibility(View.GONE);
+                swipeRefreshLayout.setVisibility(View.INVISIBLE);
+                recyclerView.setAlpha(0f);
+            } else {
+                exceptionView.setVisibility(View.GONE);
+                fetchingView.setVisibility(View.GONE);
+                swipeRefreshLayout.setVisibility(View.VISIBLE);
+                
+                // Ensure recycler is visible without animation
+                if (recyclerView.getAlpha() == 0f) {
+                    recyclerView.setAlpha(1f);
+                    recyclerView.setScaleX(1f);
+                    recyclerView.setScaleY(1f);
+                }
+            }
+        }
+        
+        swipeRefreshLayout.setRefreshing(false);
     }
 
     public void update() {
