@@ -54,6 +54,7 @@ public class BriefingDialog extends SheetDialogFragment {
     private RecyclerView.OnScrollListener scrollListener;
     private View.OnLayoutChangeListener layoutListener;
     private BriefingFeedList.FeedListener feedListener;
+    private android.content.BroadcastReceiver favoriteButtonsReceiver;
     private BriefingDialogPageListener listener;
     private RecyclerView recyclerToBeObserved;
     private CustomDurationViewPager pager;
@@ -94,6 +95,16 @@ public class BriefingDialog extends SheetDialogFragment {
         this.layoutListener = (v, left, top, right, bottom, oldLeft, oldTop,
                                oldRight, oldBottom) -> {
             updateHeader(recyclerToBeObserved);
+        };
+        
+        // Register broadcast receiver for favorite buttons visibility changes
+        this.favoriteButtonsReceiver = new android.content.BroadcastReceiver() {
+            @Override
+            public void onReceive(android.content.Context context, android.content.Intent intent) {
+                if (adapter != null) {
+                    adapter.refreshFavoriteButtons();
+                }
+            }
         };
         this.feedListener = new BriefingFeedList.FeedListener() {
             private void notifyUpdate() {
@@ -247,6 +258,11 @@ public class BriefingDialog extends SheetDialogFragment {
 
         Measurements.addStatusBarListener(value -> root.setPadding(0, value, 0, 0));
         Measurements.addNavListener(value -> placeholder.setPadding(0, 0, 0, value));
+        
+        // Register broadcast receiver for favorite buttons changes
+        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(activity)
+                .registerReceiver(favoriteButtonsReceiver, 
+                        new android.content.IntentFilter("com.stario.FAVORITE_BUTTONS_CHANGED"));
 
         return root;
     }
@@ -255,6 +271,12 @@ public class BriefingDialog extends SheetDialogFragment {
     public void onDestroy() {
         if (list != null) {
             list.removeOnFeedUpdateListener(feedListener);
+        }
+        
+        // Unregister broadcast receiver
+        if (favoriteButtonsReceiver != null && activity != null) {
+            androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(activity)
+                    .unregisterReceiver(favoriteButtonsReceiver);
         }
 
         super.onDestroy();

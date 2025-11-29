@@ -360,7 +360,11 @@ public class Settings extends ThemedActivity {
                     .putBoolean(SHOW_FAVORITE_BUTTONS, isChecked)
                     .apply();
             
-            // No need to refresh feeds for this setting, it only affects UI
+            // Broadcast the change so briefing can update immediately
+            Intent intent = new Intent("com.stario.FAVORITE_BUTTONS_CHANGED");
+            //noinspection deprecation
+            androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(this)
+                    .sendBroadcast(intent);
         });
 
         themeName.setText(getThemeType().getDisplayName());

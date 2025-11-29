@@ -357,4 +357,12 @@ public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHo
     public int getItemCount() {
         return items != null ? items.size() : 0;
     }
+    
+    /**
+     * Refresh the visibility of favorite buttons based on current preference.
+     * This should be called when the SHOW_FAVORITE_BUTTONS preference changes.
+     */
+    public void refreshFavoriteButtonsVisibility() {
+        notifyDataSetChanged();
+    }
 }

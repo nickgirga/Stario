@@ -126,4 +126,18 @@ public class BriefingAdapter extends FragmentPagerAdapter {
             }
         }
     }
+    
+    /**
+     * Refresh favorite buttons visibility for all registered fragments.
+     * This should be called when the SHOW_FAVORITE_BUTTONS preference changes.
+     */
+    public void refreshFavoriteButtons() {
+        for (Map.Entry<Integer, WeakReference<FeedPage>> entry: registeredFragments.entrySet()) {
+            WeakReference<FeedPage> fragmentReference = entry.getValue();
+
+            if (fragmentReference != null && fragmentReference.get() != null) {
+                fragmentReference.get().refreshFavoriteButtons();
+            }
+        }
+    }
 }

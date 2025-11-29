@@ -358,4 +358,13 @@ public class FeedPage extends Fragment implements ArticleStateManager.StateChang
             adapter.setFeedPosition(position);
         }
     }
+    
+    /**
+     * Refresh the favorite buttons visibility based on current preference.
+     */
+    public void refreshFavoriteButtons() {
+        if (adapter != null) {
+            adapter.refreshFavoriteButtonsVisibility();
+        }
+    }
 }
