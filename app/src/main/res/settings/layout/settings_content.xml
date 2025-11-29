@@ -583,6 +583,43 @@
         android:layout_marginBottom="10dp"
         android:fontFamily="@font/dm_sans_regular"
         android:paddingTop="40dp"
+        android:text="@string/briefing"
+        android:textColor="?attr/colorSecondary"
+        android:textSize="16sp" />
+
+    <carbon.widget.LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:divider="@drawable/transparent_divider_small"
+        android:orientation="vertical"
+        android:showDividers="middle"
+        android:transitionGroup="true"
+        app:carbon_cornerRadius="20dp">
+
+        <carbon.widget.TextView
+            android:id="@+id/favorites"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/ripple"
+            android:drawableStart="@drawable/ic_favorite"
+            android:drawablePadding="10dp"
+            android:fontFamily="@font/dm_sans_medium"
+            android:letterSpacing="-0.03"
+            android:padding="15dp"
+            android:text="@string/favorites"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="20sp"
+            app:carbon_cornerRadius="20dp" />
+
+    </carbon.widget.LinearLayout>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="10dp"
+        android:layout_marginBottom="10dp"
+        android:fontFamily="@font/dm_sans_regular"
+        android:paddingTop="40dp"
         android:text="@string/weather"
         android:textColor="?attr/colorSecondary"
         android:textSize="16sp" />

@@ -54,7 +54,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> 
+public class FeedPageAdapter extends RecyclerView.Adapter<FeedPageAdapter.ViewHolder> 
         implements ArticleStateManager.StateChangeListener {
     private static final Safelist CONTENT_SAFELIST = new Safelist() {
         {

@@ -177,6 +177,7 @@
     <string name="already_subscribed">You are already subscribed to this feed!</string>
     <string name="favorite">Favorite</string>
     <string name="favorites">Favorites</string>
+    <string name="no_favorites">No favorites yet</string>
 
     <!-- Search -->
     <string name="search_on">Search on</string>

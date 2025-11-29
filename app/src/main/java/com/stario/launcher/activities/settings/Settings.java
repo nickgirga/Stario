@@ -55,6 +55,7 @@ import com.stario.launcher.activities.launcher.pins.PinnedCategory;
 import com.stario.launcher.activities.pages.PageManager;
 import com.stario.launcher.activities.settings.dialogs.AccessibilityConfigurator;
 import com.stario.launcher.activities.settings.dialogs.NotificationConfigurator;
+import com.stario.launcher.activities.settings.dialogs.favorites.FavoritesDialog;
 import com.stario.launcher.activities.settings.dialogs.hide.HideApplicationsDialog;
 import com.stario.launcher.activities.settings.dialogs.icons.IconsDialog;
 import com.stario.launcher.activities.settings.dialogs.license.LicensesDialog;
@@ -501,6 +502,27 @@ public class Settings extends ThemedActivity {
             public void onClick(View view) {
                 if (dialog == null) {
                     dialog = new LicensesDialog(Settings.this);
+
+                    dialog.setOnDismissListener(dialog -> {
+                        showing = false;
+                    });
+                }
+
+                if (!showing) {
+                    dialog.show();
+                    showing = true;
+                }
+            }
+        });
+
+        findViewById(R.id.favorites).setOnClickListener(new View.OnClickListener() {
+            private FavoritesDialog dialog;
+            private boolean showing = false;
+
+            @Override
+            public void onClick(View view) {
+                if (dialog == null) {
+                    dialog = new FavoritesDialog(Settings.this);
 
                     dialog.setOnDismissListener(dialog -> {
                         showing = false;
