@@ -246,10 +246,13 @@
     <!-- Nextcloud Sync -->
     <string name="nextcloud_sync">Nextcloud sync</string>
     <string name="nextcloud_sync_title">Nextcloud News Sync</string>
-    <string name="nextcloud_sync_description">Sync your feeds, categories, read articles, and favorites with Nextcloud News</string>
-    <string name="nextcloud_server_url">Server URL (e.g., https://cloud.example.com)</string>
-    <string name="nextcloud_username">Username</string>
-    <string name="nextcloud_password">Password or App Password</string>
+    <string name="nextcloud_sso_description">Sync your feeds, categories, read articles, and favorites with Nextcloud News. Log in with your Nextcloud account to get started.</string>
+    <string name="nextcloud_server_url">Nextcloud Server URL</string>
+    <string name="nextcloud_login">Login with Nextcloud</string>
+    <string name="nextcloud_select_account">Select Nextcloud Account</string>
+    <string name="nextcloud_account_selected">Account: %1$s (%2$s)</string>
+    <string name="nextcloud_no_account">No account selected</string>
+    <string name="nextcloud_files_app_required">Nextcloud Files app is required for Single Sign-On</string>
     <string name="nextcloud_enable_sync">Enable sync</string>
     <string name="nextcloud_sync_now">Sync now</string>
     <string name="nextcloud_last_sync">Last synced: %s</string>
@@ -258,6 +261,7 @@
     <string name="nextcloud_sync_failed">Sync failed</string>
     <string name="nextcloud_sync_error">Sync error: %s</string>
     <string name="nextcloud_sync_disabled">Sync is disabled</string>
+    <string name="nextcloud_sync_in_progress">Sync already in progress</string>
     <string name="nextcloud_settings_saved">Settings saved</string>
     <string name="save">Save</string>
 </resources>

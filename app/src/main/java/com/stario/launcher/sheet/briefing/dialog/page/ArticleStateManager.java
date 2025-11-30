@@ -125,14 +125,30 @@ public class ArticleStateManager {
         }
 
         FavoriteArticle favorite = findFavorite(id);
+        boolean isFavorite;
         if (favorite != null) {
             favoriteArticles.remove(favorite);
+            isFavorite = false;
         } else {
             favoriteArticles.add(new FavoriteArticle(item, feedTitle));
+            isFavorite = true;
         }
 
         saveFavoriteArticles();
         notifyStateChanged();
+        
+        // Push favorite change to Nextcloud if sync is enabled and not currently syncing
+        try {
+            com.stario.launcher.sheet.briefing.sync.NextcloudSyncService syncService = 
+                com.stario.launcher.sheet.briefing.sync.NextcloudSyncService.getInstance();
+            
+            // Only push if sync is enabled and not in progress
+            if (syncService.isSyncEnabled() && !syncService.isSyncInProgress()) {
+                syncService.pushFavoriteToNextcloud(id, isFavorite);
+            }
+        } catch (RuntimeException e) {
+            // Sync service not initialized, skip push
+        }
     }
 
     /**

@@ -96,6 +96,7 @@ public class UnifiedFeed extends Feed {
             private final SimpleDateFormat[] dateFormats = {
                 new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss Z", Locale.ENGLISH),
                 new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH),
+                new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss", Locale.ENGLISH), // Without timezone
                 new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.ENGLISH),
                 new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ", Locale.ENGLISH),
                 new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.ENGLISH),

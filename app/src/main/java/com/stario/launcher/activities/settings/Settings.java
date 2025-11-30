@@ -60,6 +60,8 @@ import com.stario.launcher.activities.settings.dialogs.hide.HideApplicationsDial
 import com.stario.launcher.activities.settings.dialogs.icons.IconsDialog;
 import com.stario.launcher.activities.settings.dialogs.license.LicensesDialog;
 import com.stario.launcher.activities.settings.dialogs.location.LocationDialog;
+import com.nextcloud.android.sso.AccountImporter;
+import com.nextcloud.android.sso.model.SingleSignOnAccount;
 import com.stario.launcher.activities.settings.dialogs.nextcloud.NextcloudSyncDialog;
 import com.stario.launcher.activities.settings.dialogs.pin.PinnedCategoryDialog;
 import com.stario.launcher.activities.settings.dialogs.search.engine.SearchEngineDialog;
@@ -90,6 +92,9 @@ public class Settings extends ThemedActivity {
     public static final String FAVORITES_FEED_ENABLED = "com.stario.FAVORITES_FEED_ENABLED";
     public static final String SHOW_FAVORITE_BUTTONS = "com.stario.SHOW_FAVORITE_BUTTONS";
     
+    // Flag to allow getSharedPreferences for Nextcloud SSO
+    private boolean allowSharedPreferences = false;
+    
     private MaterialSwitch lockAnimSwitch;
     private CollapsibleTitleBar titleBar;
     private View titleMeasurePlaceholder;
@@ -112,6 +117,7 @@ public class Settings extends ThemedActivity {
     private ViewGroup content;
     private View fader;
     private FavoritesDialog favoritesDialog;
+    private NextcloudSyncDialog nextcloudSyncDialog;
 
     public Settings() {
         super();
@@ -596,21 +602,20 @@ public class Settings extends ThemedActivity {
         });
 
         findViewById(R.id.nextcloud_sync).setOnClickListener(new View.OnClickListener() {
-            private NextcloudSyncDialog dialog;
             private boolean showing = false;
 
             @Override
             public void onClick(View view) {
-                if (dialog == null) {
-                    dialog = new NextcloudSyncDialog(Settings.this);
+                if (nextcloudSyncDialog == null) {
+                    nextcloudSyncDialog = new NextcloudSyncDialog(Settings.this);
 
-                    dialog.setOnDismissListener(d -> {
+                    nextcloudSyncDialog.setOnDismissListener(d -> {
                         showing = false;
                     });
                 }
 
                 if (!showing) {
-                    dialog.show();
+                    nextcloudSyncDialog.show();
                     showing = true;
                 }
             }
@@ -860,4 +865,15 @@ public class Settings extends ThemedActivity {
     protected boolean isAffectedByBackGesture() {
         return true;
     }
+    
+    @Override
+    public SharedPreferences getSharedPreferences(String name, int mode) {
+        // Allow getSharedPreferences when called by Nextcloud SSO library
+        if (allowSharedPreferences) {
+            return getApplicationContext().getSharedPreferences(name, mode);
+        }
+        // Otherwise throw exception as per ThemedActivity's requirement
+        return super.getSharedPreferences(name, mode);
+    }
+    
 }

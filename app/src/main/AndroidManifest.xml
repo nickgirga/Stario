@@ -38,6 +38,7 @@
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:persistent="true"
         android:rollbackDataPolicy="wipe"
         android:supportsRtl="false"
@@ -55,19 +56,6 @@
             android:excludeFromRecents="true"
             android:configChanges="orientation|screenSize|layoutDirection"
             android:autoRemoveFromRecents="true"
-            android:taskAffinity="@string/affinity"
-            android:theme="@style/Theme.Light.Blue.Opaque" />
-
-        <activity
-            android:name=".activities.pages.PageManager"
-            android:allowEmbedded="false"
-            android:alwaysRetainTaskState="false"
-            android:exported="true"
-            android:launchMode="standard"
-            android:rotationAnimation="crossfade"
-            android:autoRemoveFromRecents="true"
-            android:excludeFromRecents="true"
-            android:supportsPictureInPicture="false"
             android:taskAffinity="@string/affinity"
             android:theme="@style/Theme.Light.Blue.Opaque" />
 
