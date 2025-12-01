@@ -88,13 +88,29 @@ public class ArticleStateManager {
     /**
      * Marks an article as read.
      */
-    public void markAsRead(RssItem item) {
-        String id = getArticleId(item);
-        if (!id.isEmpty() && readArticles.add(id)) {
-            saveReadArticles();
-            notifyStateChanged();
+public void markAsRead(RssItem item) {
+    String id = getArticleId(item);
+    if (!id.isEmpty() && readArticles.add(id)) {
+        saveReadArticles();
+        notifyStateChanged();
+        
+        // Push read status change to Nextcloud if sync is enabled and not currently syncing
+        try {
+            com.stario.launcher.sheet.briefing.sync.NextcloudSyncService syncService = com.stario.launcher.sheet.briefing.sync.NextcloudSyncService.getInstance();
+            // Only push if sync is enabled and not in progress
+            if (syncService.isSyncEnabled() && !syncService.isSyncInProgress()) {
+                android.util.Log.d("ArticleStateManager", "Pushing read status to Nextcloud: " + id);
+                syncService.pushReadStatusToNextcloud(id, true); // true = mark as read
+            } else {
+                android.util.Log.d("ArticleStateManager", "Skipping Nextcloud push - sync enabled: " + 
+                    (syncService != null && syncService.isSyncEnabled()) + ", in progress: " + 
+                    (syncService != null && syncService.isSyncInProgress()));
+            }
+        } catch (RuntimeException e) {
+            android.util.Log.w("ArticleStateManager", "Sync service not available for read status push", e);
         }
     }
+}
 
     /**
      * Checks if an article has been read.
@@ -107,13 +123,29 @@ public class ArticleStateManager {
     /**
      * Marks an article as unread.
      */
-    public void markAsUnread(RssItem item) {
-        String id = getArticleId(item);
-        if (!id.isEmpty() && readArticles.remove(id)) {
-            saveReadArticles();
-            notifyStateChanged();
+public void markAsUnread(RssItem item) {
+    String id = getArticleId(item);
+    if (!id.isEmpty() && readArticles.remove(id)) {
+        saveReadArticles();
+        notifyStateChanged();
+        
+        // Push read status change to Nextcloud if sync is enabled and not currently syncing
+        try {
+            com.stario.launcher.sheet.briefing.sync.NextcloudSyncService syncService = com.stario.launcher.sheet.briefing.sync.NextcloudSyncService.getInstance();
+            // Only push if sync is enabled and not in progress
+            if (syncService.isSyncEnabled() && !syncService.isSyncInProgress()) {
+                android.util.Log.d("ArticleStateManager", "Pushing unread status to Nextcloud: " + id);
+                syncService.pushReadStatusToNextcloud(id, false); // false = mark as unread
+            } else {
+                android.util.Log.d("ArticleStateManager", "Skipping Nextcloud push - sync enabled: " + 
+                    (syncService != null && syncService.isSyncEnabled()) + ", in progress: " + 
+                    (syncService != null && syncService.isSyncInProgress()));
+            }
+        } catch (RuntimeException e) {
+            android.util.Log.w("ArticleStateManager", "Sync service not available for unread status push", e);
         }
     }
+}
 
     /**
      * Toggles the favorite status of an article.
@@ -144,10 +176,15 @@ public class ArticleStateManager {
             
             // Only push if sync is enabled and not in progress
             if (syncService.isSyncEnabled() && !syncService.isSyncInProgress()) {
+                android.util.Log.d("ArticleStateManager", "Pushing favorite status to Nextcloud: " + id + " -> " + isFavorite);
                 syncService.pushFavoriteToNextcloud(id, isFavorite);
+            } else {
+                android.util.Log.d("ArticleStateManager", "Skipping Nextcloud favorite push - sync enabled: " + 
+                    (syncService != null && syncService.isSyncEnabled()) + ", in progress: " + 
+                    (syncService != null && syncService.isSyncInProgress()));
             }
         } catch (RuntimeException e) {
-            // Sync service not initialized, skip push
+            android.util.Log.w("ArticleStateManager", "Sync service not available for favorite push", e);
         }
     }
 
